@@ -1,8 +1,10 @@
+import type { IconName } from '@/shared/ui'
+
 export interface ShopItem {
   id: string
   name: string
   description: string
-  icon: string
+  icon: IconName
   price: number
   category: 'theme' | 'powerup' | 'avatar' | 'badge'
   rarity: 'common' | 'rare' | 'epic' | 'legendary'
@@ -22,7 +24,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     id: 'xp_boost_1h',
     name: '2x XP - 1 Hora',
     description: 'Dobra todo XP ganho por 1 hora',
-    icon: '⚡',
+    icon: 'zap' as IconName,
     price: 50,
     category: 'powerup',
     rarity: 'common',
@@ -36,7 +38,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     id: 'xp_boost_24h',
     name: '2x XP - 24 Horas',
     description: 'Dobra todo XP ganho por 24 horas',
-    icon: '⚡⚡',
+    icon: 'zap-double' as IconName,
     price: 200,
     category: 'powerup',
     rarity: 'rare',
@@ -50,7 +52,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     id: 'xp_boost_week',
     name: '3x XP - 1 Semana',
     description: 'TRIPLICA todo XP ganho por 7 dias!',
-    icon: '⚡⚡⚡',
+    icon: 'zap-triple' as IconName,
     price: 1000,
     category: 'powerup',
     rarity: 'legendary',
@@ -64,7 +66,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     id: 'streak_freeze_1d',
     name: 'Reviver Streak - 1 Uso',
     description: 'Salva seu streak de 1 dia perdido',
-    icon: '❄️',
+    icon: 'snowflake' as IconName,
     price: 100,
     category: 'powerup',
     rarity: 'rare',
@@ -77,7 +79,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     id: 'streak_freeze_3d',
     name: 'Reviver Streak - 3 Usos',
     description: 'Salva seu streak por até 3 dias',
-    icon: '❄️❄️',
+    icon: 'snowflake-double' as IconName,
     price: 250,
     category: 'powerup',
     rarity: 'epic',
@@ -90,7 +92,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     id: 'double_coins_24h',
     name: '2x Moedas - 24h',
     description: 'Dobra todas as moedas ganhas por 24h',
-    icon: '💰',
+    icon: 'coins-double' as IconName,
     price: 150,
     category: 'powerup',
     rarity: 'rare',
@@ -104,7 +106,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     id: 'instant_level',
     name: 'Level Up Instantâneo',
     description: 'Sobe 1 nível imediatamente',
-    icon: '🚀',
+    icon: 'rocket' as IconName,
     price: 500,
     category: 'powerup',
     rarity: 'epic',
@@ -119,7 +121,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     id: 'sparkle_effect',
     name: 'Efeito Brilho',
     description: 'Seu avatar brilha com estrelas',
-    icon: '✨',
+    icon: 'sparkles' as IconName,
     price: 200,
     category: 'avatar',
     rarity: 'rare'
@@ -128,7 +130,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     id: 'fire_aura',
     name: 'Aura de Fogo',
     description: 'Chamas ao redor do seu avatar',
-    icon: '🔥',
+    icon: 'fire-aura' as IconName,
     price: 300,
     category: 'avatar',
     rarity: 'epic',
@@ -138,7 +140,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     id: 'rainbow_trail',
     name: 'Rastro Arco-íris',
     description: 'Deixa um rastro colorido',
-    icon: '🌈',
+    icon: 'rainbow' as IconName,
     price: 400,
     category: 'avatar',
     rarity: 'epic',
@@ -148,7 +150,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     id: 'galaxy_aura',
     name: 'Aura Galáctica',
     description: 'Efeito de galáxia cósmico',
-    icon: '🌌',
+    icon: 'stars' as IconName,
     price: 1000,
     category: 'avatar',
     rarity: 'legendary',
@@ -160,16 +162,16 @@ export const SHOP_ITEMS: ShopItem[] = [
     id: 'streak_master_badge',
     name: 'Badge Mestre do Streak',
     description: 'Mostra sua dedicação',
-    icon: '🔥',
+    icon: 'flame' as IconName,
     price: 300,
     category: 'badge',
     rarity: 'epic'
   },
   {
     id: 'whale_badge',
-    name: 'Badge Baleia 🐋',
+    name: 'Badge Baleia',
     description: 'Para os verdadeiros supporters',
-    icon: '🐋',
+    icon: 'waves' as IconName,
     price: 2000,
     category: 'badge',
     rarity: 'legendary',
@@ -180,7 +182,7 @@ export const SHOP_ITEMS: ShopItem[] = [
     id: 'og_badge',
     name: 'Badge OG',
     description: 'Early Adopter exclusivo',
-    icon: '👑',
+    icon: 'crown-legendary' as IconName,
     price: 5000,
     category: 'badge',
     rarity: 'legendary',
@@ -252,12 +254,12 @@ export function getRarityGradient(rarity: ShopItem['rarity']): string {
   return gradients[rarity]
 }
 
-export function getCategoryIcon(category: ShopItem['category']): string {
-  const icons = {
-    theme: '🎨',
-    powerup: '⚡',
-    avatar: '✨',
-    badge: '🏆'
+export function getCategoryIcon(category: ShopItem['category']): IconName {
+  const icons: Record<ShopItem['category'], IconName> = {
+    theme: 'palette',
+    powerup: 'zap',
+    avatar: 'sparkles',
+    badge: 'trophy'
   }
   return icons[category]
 }

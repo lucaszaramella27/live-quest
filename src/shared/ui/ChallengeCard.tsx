@@ -1,5 +1,6 @@
 import { Challenge, getDifficultyColor, getDifficultyGradient } from '@/services/challenges.service'
 import { CheckCircle2, Circle, Coins, Zap } from 'lucide-react'
+import { IconMapper } from './IconMapper'
 
 interface ChallengeCardProps {
   challenge: Challenge
@@ -12,9 +13,9 @@ export function ChallengeCard({ challenge, compact = false }: ChallengeCardProps
 
   if (compact) {
     return (
-      <div className={`p-3 rounded-xl bg-gradient-to-br ${getDifficultyGradient(challenge.difficulty)} border border-white/5 hover:border-white/10 transition-all duration-300`}>
+      <div className={`p-3 rounded-xl bg-gradient-to-br ${getDifficultyGradient(challenge.difficulty)} border border-white/5 hover:border-white/10 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg`}>
         <div className="flex items-center gap-3">
-          <div className="text-2xl">{challenge.icon}</div>
+          <IconMapper icon={challenge.icon} size={32} />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <p className="text-sm font-semibold truncate">{challenge.title}</p>
@@ -38,7 +39,7 @@ export function ChallengeCard({ challenge, compact = false }: ChallengeCardProps
   }
 
   return (
-    <div className={`p-5 rounded-2xl bg-gradient-to-br ${getDifficultyGradient(challenge.difficulty)} border border-white/10 hover:border-white/20 transition-all duration-300 group relative overflow-hidden`}>
+    <div className={`p-5 rounded-2xl bg-gradient-to-br ${getDifficultyGradient(challenge.difficulty)} border border-white/10 hover:border-white/20 transition-all duration-300 group relative overflow-hidden hover:scale-[1.02] hover:shadow-xl`}>
       {/* Difficulty badge */}
       <div className="absolute top-3 right-3">
         <span 
@@ -54,7 +55,7 @@ export function ChallengeCard({ challenge, compact = false }: ChallengeCardProps
 
       {/* Header */}
       <div className="flex items-start gap-4 mb-4">
-        <div className="text-4xl">{challenge.icon}</div>
+        <IconMapper icon={challenge.icon} size={48} />
         <div className="flex-1">
           <h4 className="text-lg font-bold mb-1">{challenge.title}</h4>
           <p className="text-sm text-gray-400">{challenge.description}</p>

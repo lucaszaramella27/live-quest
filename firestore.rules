@@ -2,7 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper functions
+    // ==========================================
+    // HELPER FUNCTIONS
+    // ==========================================
+    
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -11,70 +14,272 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
     
-    // Users collection
+    function isValidString(value, minLen, maxLen) {
+      return value is string && 
+             value.size() >= minLen && 
+             value.size() <= maxLen;
+    }
+    
+    function isValidTimestamp(value) {
+      return value is timestamp;
+    }
+    
+    function hasOnlyAllowedFields(allowedFields) {
+      return request.resource.data.keys().hasOnly(allowedFields);
+    }
+    
+    // ==========================================
+    // USERS COLLECTION
+    // ==========================================
     match /users/{userId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.auth.uid == userId;
-      allow update: if isOwner(userId);
+      
+      allow create: if isAuthenticated() && 
+                      request.auth.uid == userId &&
+                      isValidString(request.resource.data.displayName, 1, 100) &&
+                      isValidString(request.resource.data.email, 5, 255) &&
+                      isValidTimestamp(request.resource.data.createdAt);
+      
+      allow update: if isOwner(userId) &&
+                      // Não permitir alterar campos críticos
+                      request.resource.data.email == resource.data.email &&
+                      request.resource.data.createdAt == resource.data.createdAt;
+      
       allow delete: if false; // Nunca deletar usuários via client
     }
     
-    // Goals collection
+    // ==========================================
+    // GOALS COLLECTION
+    // ==========================================
     match /goals/{goalId} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && 
+                    resource.data.userId == request.auth.uid;
+      
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid &&
+                      isValidString(request.resource.data.title, 1, 200) &&
+                      isValidTimestamp(request.resource.data.createdAt);
+      
+      allow update: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid &&
+                      // Não permitir alterar userId ou createdAt
+                      request.resource.data.userId == resource.data.userId &&
+                      request.resource.data.createdAt == resource.data.createdAt;
+      
+      allow delete: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid;
     }
     
-    // Streaks collection
+    // ==========================================
+    // STREAKS COLLECTION
+    // ==========================================
     match /streaks/{streakId} {
-      allow read: if isAuthenticated() && streakId == request.auth.uid;
-      allow create, update: if isAuthenticated() && streakId == request.auth.uid;
-      allow delete: if false;
+      allow read: if isAuthenticated() && 
+                    streakId == request.auth.uid;
+      
+      allow create: if isAuthenticated() && 
+                      streakId == request.auth.uid &&
+                      request.resource.data.currentStreak is int &&
+                      request.resource.data.longestStreak is int &&
+                      request.resource.data.currentStreak >= 0 &&
+                      request.resource.data.longestStreak >= 0;
+      
+      allow update: if isAuthenticated() && 
+                      streakId == request.auth.uid &&
+                      request.resource.data.currentStreak is int &&
+                      request.resource.data.longestStreak is int &&
+                      // Prevenir fraude: currentStreak não pode ser maior que longestStreak
+                      request.resource.data.currentStreak <= request.resource.data.longestStreak;
+      
+      allow delete: if false; // Nunca deletar streaks
     }
     
-    // Checklists collection
+    // ==========================================
+    // CHECKLISTS COLLECTION
+    // ==========================================
     match /checklists/{checklistId} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && 
+                    resource.data.userId == request.auth.uid;
+      
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid &&
+                      isValidString(request.resource.data.title, 1, 200) &&
+                      isValidTimestamp(request.resource.data.createdAt);
+      
+      allow update: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid &&
+                      // Não permitir alterar userId ou createdAt
+                      request.resource.data.userId == resource.data.userId &&
+                      request.resource.data.createdAt == resource.data.createdAt;
+      
+      allow delete: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid;
     }
     
-    // Calendar collection
+    // ==========================================
+    // CALENDAR COLLECTION
+    // ==========================================
     match /calendar/{eventId} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && 
+                    resource.data.userId == request.auth.uid;
+      
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid &&
+                      isValidString(request.resource.data.title, 1, 200);
+      
+      allow update: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid &&
+                      // Não permitir alterar userId
+                      request.resource.data.userId == resource.data.userId;
+      
+      allow delete: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid;
     }
     
-    // User Progress collection
+    // ==========================================
+    // USER PROGRESS COLLECTION
+    // ==========================================
     match /userProgress/{progressId} {
-      allow read: if isAuthenticated() && progressId == request.auth.uid;
-      allow create, update: if isAuthenticated() && progressId == request.auth.uid;
-      allow delete: if false;
+      // Leitura pública (necessário para leaderboard)
+      allow read: if isAuthenticated();
+      
+      allow create: if isAuthenticated() && 
+                      progressId == request.auth.uid &&
+                      request.resource.data.level is int &&
+                      request.resource.data.xp is int &&
+                      request.resource.data.coins is int &&
+                      request.resource.data.achievements is list &&
+                      request.resource.data.level >= 1 &&
+                      request.resource.data.xp >= 0 &&
+                      request.resource.data.coins >= 0;
+      
+      allow update: if isAuthenticated() && 
+                      progressId == request.auth.uid &&
+                      request.resource.data.level is int &&
+                      request.resource.data.xp is int &&
+                      request.resource.data.coins is int &&
+                      // Prevenir fraude: XP e coins não podem diminuir drasticamente
+                      request.resource.data.xp >= resource.data.xp - 100 &&
+                      request.resource.data.coins >= resource.data.coins - 1000 &&
+                      // Prevenir fraude: level não pode diminuir
+                      request.resource.data.level >= resource.data.level &&
+                      // Prevenir fraude: não pode pular mais de 5 níveis de uma vez
+                      request.resource.data.level <= resource.data.level + 5 &&
+                      // Prevenir fraude: ganho de XP limitado a 10000 por update
+                      request.resource.data.xp <= resource.data.xp + 10000;
+      
+      allow delete: if false; // Nunca deletar progresso
     }
     
-    // Twitch Integrations collection
+    // ==========================================
+    // TWITCH INTEGRATIONS COLLECTION
+    // ==========================================
     match /twitchIntegrations/{integrationId} {
-      allow read: if isAuthenticated() && integrationId == request.auth.uid;
-      allow create, update: if isAuthenticated() && integrationId == request.auth.uid;
-      allow delete: if false;
+      allow read: if isAuthenticated() && 
+                    integrationId == request.auth.uid;
+      
+      allow create: if isAuthenticated() && 
+                      integrationId == request.auth.uid &&
+                      request.resource.data.userId == request.auth.uid;
+      
+      allow update: if isAuthenticated() && 
+                      integrationId == request.auth.uid &&
+                      // Não permitir alterar userId
+                      request.resource.data.userId == resource.data.userId;
+      
+      allow delete: if false; // Usar campo "disconnected" ao invés de deletar
     }
     
-    // Twitch Goals collection
+    // ==========================================
+    // TWITCH GOALS COLLECTION
+    // ==========================================
     match /twitchGoals/{goalId} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && 
+                    resource.data.userId == request.auth.uid;
+      
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid &&
+                      isValidString(request.resource.data.title, 1, 200) &&
+                      request.resource.data.type in ['followers', 'subscribers', 'viewers', 'streamTime'] &&
+                      request.resource.data.target is int &&
+                      request.resource.data.target > 0 &&
+                      request.resource.data.target <= 1000000;
+      
+      allow update: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid &&
+                      // Não permitir alterar campos críticos
+                      request.resource.data.userId == resource.data.userId;
+      
+      allow delete: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid;
     }
     
-    // Twitch Events collection (para EventSub)
+    // ==========================================
+    // TWITCH EVENTS COLLECTION
+    // ==========================================
     match /twitchEvents/{eventId} {
-      // Somente leitura para usuários autenticados (eventos são criados pelo backend)
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow create: if false; // Criado apenas pelo Cloud Function
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow delete: if false;
+      // Leitura apenas para o dono
+      allow read: if isAuthenticated() && 
+                    resource.data.userId == request.auth.uid;
+      
+      // Criação apenas via Cloud Functions (backend)
+      allow create: if false;
+      
+      // Update apenas para marcar como processado
+      allow update: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['processed']) &&
+                      request.resource.data.processed == true;
+      
+      allow delete: if false; // Manter histórico de eventos
+    }
+    
+    // ==========================================
+    // DAILY ACTIVITY COLLECTION
+    // ==========================================
+    match /dailyActivity/{activityId} {
+      allow read: if isAuthenticated() && 
+                    resource.data.userId == request.auth.uid;
+      
+      allow create: if isAuthenticated() && 
+                      request.resource.data.userId == request.auth.uid &&
+                      isValidString(request.resource.data.date, 10, 10) &&
+                      request.resource.data.tasksCompleted is int &&
+                      request.resource.data.goalsCompleted is int &&
+                      request.resource.data.eventsCreated is int &&
+                      request.resource.data.xpEarned is int &&
+                      request.resource.data.coinsEarned is int &&
+                      request.resource.data.tasksCompleted >= 0 &&
+                      request.resource.data.goalsCompleted >= 0 &&
+                      request.resource.data.eventsCreated >= 0 &&
+                      request.resource.data.xpEarned >= 0 &&
+                      request.resource.data.coinsEarned >= 0;
+      
+      allow update: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid &&
+                      request.resource.data.userId == resource.data.userId &&
+                      request.resource.data.date == resource.data.date &&
+                      // Prevenir fraude: valores só podem aumentar
+                      request.resource.data.tasksCompleted >= resource.data.tasksCompleted &&
+                      request.resource.data.goalsCompleted >= resource.data.goalsCompleted &&
+                      request.resource.data.eventsCreated >= resource.data.eventsCreated &&
+                      request.resource.data.xpEarned >= resource.data.xpEarned &&
+                      request.resource.data.coinsEarned >= resource.data.coinsEarned &&
+                      // Limites razoáveis por dia
+                      request.resource.data.tasksCompleted <= 1000 &&
+                      request.resource.data.goalsCompleted <= 100 &&
+                      request.resource.data.eventsCreated <= 100 &&
+                      request.resource.data.xpEarned <= 50000 &&
+                      request.resource.data.coinsEarned <= 10000;
+      
+      allow delete: if false; // Manter histórico
+    }
+    
+    // ==========================================
+    // DENY ALL OTHER COLLECTIONS
+    // ==========================================
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

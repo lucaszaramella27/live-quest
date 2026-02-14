@@ -14,7 +14,7 @@ import {
 import { getUserGoals, createGoal, updateGoal, type Goal } from '@/services/goals.service'
 import { getUserChecklists, createChecklistItem, updateChecklistItem, type ChecklistItem } from '@/services/checklists.service'
 import { getUserStreak, type Streak } from '@/services/streaks.service'
-import { getUserProgress, createUserProgress, addXP, addCoins, subscribeToUserProgress, type UserProgress } from '@/services/progress.service'
+import { getUserProgress, createUserProgress, subscribeToUserProgress, type UserProgress, type Achievement } from '@/services/progress.service'
 import { applyTheme, loadSavedTheme, type Theme } from '@/services/themes.service'
 
 const motivationalMessages = {
@@ -146,6 +146,12 @@ export function DashboardPage() {
     setToast({ show: true, message, type })
   }
 
+  const showAchievementToast = (achievement: Achievement) => {
+    setShowConfetti(true)
+    showToast(`🏆 CONQUISTA DESBLOQUEADA: ${achievement.name}! +${achievement.xpReward} XP`, 'achievement')
+    setTimeout(() => setShowConfetti(false), 3000)
+  }
+
   const handleCompleteOnboarding = () => {
     localStorage.setItem('hasSeenOnboarding', 'true')
     setShowOnboarding(false)
@@ -157,10 +163,9 @@ export function DashboardPage() {
     
     try {
       await createGoal(user.id, newGoalTitle.trim())
-      await addXP(user.id, 5)
       setNewGoalTitle('')
       setShowGoalModal(false)
-      showToast('Meta criada! +5 XP', 'goal')
+      showToast('Meta criada!', 'goal')
       await loadDashboardData()
     } catch (error) {
       console.error('Erro ao criar meta:', error)
@@ -187,12 +192,19 @@ export function DashboardPage() {
     
     try {
       const completed = !item.completed
-      await updateChecklistItem(item.id, { completed })
+      const achievements = await updateChecklistItem(item.id, { completed })
       
       if (completed) {
-        await addXP(user.id, 10)
-        await addCoins(user.id, 2)
         showToast(getRandomMessage('taskCompleted'), 'task')
+        
+        // Mostrar toasts de achievements desbloqueados
+        if (achievements && achievements.length > 0) {
+          setTimeout(() => {
+            achievements.forEach((achievement, index) => {
+              setTimeout(() => showAchievementToast(achievement), index * 3500)
+            })
+          }, 1000)
+        }
       }
       
       await loadDashboardData()
@@ -208,16 +220,23 @@ export function DashboardPage() {
       const newProgress = Math.max(0, Math.min(100, (goal.progress || 0) + increment))
       const completed = newProgress >= 100
       
-      await updateGoal(goal.id, { 
+      const achievements = await updateGoal(goal.id, { 
         progress: newProgress,
         completed 
       })
       
       if (completed) {
-        await addXP(user.id, 100)
-        await addCoins(user.id, 25)
         setShowConfetti(true)
         showToast(getRandomMessage('goalCompleted'), 'achievement')
+        
+        // Mostrar toasts de achievements desbloqueados
+        if (achievements && achievements.length > 0) {
+          setTimeout(() => {
+            achievements.forEach((achievement, index) => {
+              setTimeout(() => showAchievementToast(achievement), index * 3500)
+            })
+          }, 2000)
+        }
       }
       
       await loadDashboardData()
@@ -298,7 +317,7 @@ export function DashboardPage() {
 
         {/* Stats Row - Compact */}
         <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="p-4 rounded-xl" style={{ background: 'var(--color-background-secondary)' }}>
+          <div className="p-4 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer" style={{ background: 'var(--color-background-secondary)' }}>
             <div className="flex items-center gap-2 mb-1">
               <Flame className="w-4 h-4" style={{ color: 'var(--color-secondary)' }} />
               <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Streak</span>
@@ -307,7 +326,7 @@ export function DashboardPage() {
             <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>dias</p>
           </div>
 
-          <div className="p-4 rounded-xl" style={{ background: 'var(--color-background-secondary)' }}>
+          <div className="p-4 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer" style={{ background: 'var(--color-background-secondary)' }}>
             <div className="flex items-center gap-2 mb-1">
               <Target className="w-4 h-4" style={{ color: 'var(--color-primary)' }} />
               <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Metas</span>
@@ -316,7 +335,7 @@ export function DashboardPage() {
             <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>ativas</p>
           </div>
 
-          <div className="p-4 rounded-xl" style={{ background: 'var(--color-background-secondary)' }}>
+          <div className="p-4 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer" style={{ background: 'var(--color-background-secondary)' }}>
             <div className="flex items-center gap-2 mb-1">
               <Zap className="w-4 h-4" style={{ color: 'var(--color-accent)' }} />
               <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Nível</span>
@@ -433,7 +452,7 @@ export function DashboardPage() {
                 {goals.slice(0, 4).map((goal) => (
                   <div 
                     key={goal.id}
-                    className="p-3 rounded-lg"
+                    className="p-3 rounded-lg transition-all duration-200 hover:scale-[1.02] hover:translate-x-1 hover:shadow-lg cursor-pointer"
                     style={{ background: 'var(--color-background-tertiary)' }}
                   >
                     <div className="flex items-center justify-between mb-2">

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '@/features/auth/context/AuthContext'
-import { Trophy, Lock } from 'lucide-react'
+import { Trophy, Lock, BarChart3, Star } from 'lucide-react'
 import { ACHIEVEMENTS, getUserProgress, type UserProgress, type Achievement } from '@/services/progress.service'
+import { IconMapper } from '@/shared/ui'
 
 export function AchievementsPage() {
   const { user } = useAuth()
@@ -55,8 +56,8 @@ export function AchievementsPage() {
       <div 
         className={`relative p-6 rounded-2xl border transition-all duration-300 ${
           unlocked 
-            ? `bg-gradient-to-br ${rarityColors[achievement.rarity]} shadow-lg ${rarityGlow[achievement.rarity]}`
-            : 'bg-brand-dark-secondary/50 border-white/5 opacity-60'
+            ? `bg-gradient-to-br ${rarityColors[achievement.rarity]} shadow-lg ${rarityGlow[achievement.rarity]} hover:scale-110 hover:rotate-3 hover:shadow-2xl cursor-pointer`
+            : 'bg-brand-dark-secondary/50 border-white/5 opacity-60 hover:opacity-80'
         }`}
       >
         {!unlocked && (
@@ -66,7 +67,9 @@ export function AchievementsPage() {
         )}
         
         <div className="text-center">
-          <div className="text-5xl mb-3">{achievement.icon}</div>
+          <div className="flex justify-center items-center mb-3">
+            <IconMapper icon={achievement.icon} size={56} />
+          </div>
           <h3 className="font-bold text-lg mb-1">{achievement.name}</h3>
           <p className="text-sm text-gray-300 mb-3">{achievement.description}</p>
           
@@ -110,26 +113,26 @@ export function AchievementsPage() {
           <>
             {/* Stats */}
             <div className="grid md:grid-cols-4 gap-6 mb-12">
-              <div className="bg-brand-dark-secondary/50 border border-white/5 rounded-xl p-6 text-center">
+              <div className="bg-brand-dark-secondary/50 border border-white/5 rounded-xl p-6 text-center transition-all duration-300 hover:scale-105 hover:border-yellow-500/30 hover:shadow-lg">
                 <Trophy className="w-8 h-8 text-yellow-500 mx-auto mb-2" />
                 <p className="text-3xl font-bold">{unlockedAchievements.length}</p>
                 <p className="text-sm text-gray-400">Desbloqueadas</p>
               </div>
               
-              <div className="bg-brand-dark-secondary/50 border border-white/5 rounded-xl p-6 text-center">
+              <div className="bg-brand-dark-secondary/50 border border-white/5 rounded-xl p-6 text-center transition-all duration-300 hover:scale-105 hover:border-gray-500/30 hover:shadow-lg">
                 <Lock className="w-8 h-8 text-gray-500 mx-auto mb-2" />
                 <p className="text-3xl font-bold">{lockedAchievements.length}</p>
                 <p className="text-sm text-gray-400">Bloqueadas</p>
               </div>
               
-              <div className="bg-brand-dark-secondary/50 border border-white/5 rounded-xl p-6 text-center">
-                <div className="text-3xl mb-2">📊</div>
+              <div className="bg-brand-dark-secondary/50 border border-white/5 rounded-xl p-6 text-center transition-all duration-300 hover:scale-105 hover:border-blue-500/30 hover:shadow-lg">
+                <BarChart3 className="w-8 h-8 text-blue-500 mx-auto mb-2" />
                 <p className="text-3xl font-bold">{Math.round((unlockedAchievements.length / ACHIEVEMENTS.length) * 100)}%</p>
                 <p className="text-sm text-gray-400">Completude</p>
               </div>
               
-              <div className="bg-brand-dark-secondary/50 border border-white/5 rounded-xl p-6 text-center">
-                <div className="text-3xl mb-2">⭐</div>
+              <div className="bg-brand-dark-secondary/50 border border-white/5 rounded-xl p-6 text-center transition-all duration-300 hover:scale-105 hover:border-purple-500/30 hover:shadow-lg">
+                <Star className="w-8 h-8 text-purple-500 mx-auto mb-2" />
                 <p className="text-3xl font-bold">{totalXPFromAchievements.toLocaleString()}</p>
                 <p className="text-sm text-gray-400">XP Total</p>
               </div>

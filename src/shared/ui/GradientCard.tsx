@@ -16,7 +16,7 @@ export function GradientCard({
   delay = ''
 }: GradientCardProps) {
   const hoverClasses = hover 
-    ? 'hover:bg-white/8 hover:border-white/10' 
+    ? 'hover:bg-white/8 hover:border-white/10 hover:shadow-lg' 
     : ''
   
   return (

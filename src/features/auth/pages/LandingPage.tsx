@@ -148,7 +148,7 @@ export function LandingPage() {
                   size="lg"
                   style={{ background: '#3b82f6', color: '#ffffff' }}
                   icon={<Zap className="w-5 h-5" />}
-                  className="relative"
+                  className="relative hover:scale-110 hover:shadow-[0_0_40px_rgba(59,130,246,0.6)]"
                 >
                   Começar Agora
                 </Button>
@@ -159,7 +159,7 @@ export function LandingPage() {
                 }}
                 variant="ghost"
                 size="lg"
-                className="border-2"
+                className="border-2 hover:scale-105 hover:border-white/30"
                 style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}
               >
                 Saber Mais
@@ -168,8 +168,8 @@ export function LandingPage() {
 
             {/* Stats */}
             <div className="flex flex-wrap gap-8 mt-12 pt-12 border-t justify-center" style={{ borderColor: 'rgba(255, 255, 255, 0.05)' }}>
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'rgba(59, 130, 246, 0.1)' }}>
+              <div className="flex items-center gap-3 transition-all duration-300 hover:scale-110 cursor-pointer">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/30" style={{ background: 'rgba(59, 130, 246, 0.1)' }}>
                   <Users className="w-6 h-6" style={{ color: '#3b82f6' }} />
                 </div>
                 <div>
@@ -177,8 +177,8 @@ export function LandingPage() {
                   <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Streamers Ativos</div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'rgba(59, 130, 246, 0.1)' }}>
+              <div className="flex items-center gap-3 transition-all duration-300 hover:scale-110 cursor-pointer">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/30" style={{ background: 'rgba(59, 130, 246, 0.1)' }}>
                   <CheckSquare className="w-6 h-6" style={{ color: '#3b82f6' }} />
                 </div>
                 <div>
@@ -186,8 +186,8 @@ export function LandingPage() {
                   <div className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Tarefas Completadas</div>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: 'rgba(59, 130, 246, 0.1)' }}>
+              <div className="flex items-center gap-3 transition-all duration-300 hover:scale-110 cursor-pointer">
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/30" style={{ background: 'rgba(59, 130, 246, 0.1)' }}>
                   <Trophy className="w-6 h-6" style={{ color: '#3b82f6' }} />
                 </div>
                 <div>
@@ -235,7 +235,7 @@ export function LandingPage() {
               return (
                 <div
                   key={index}
-                  className="p-6 rounded-2xl border transition-all duration-300 hover:scale-105 hover:shadow-lg group cursor-pointer relative overflow-hidden"
+                  className="p-6 rounded-2xl border transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-blue-500/20 hover:border-blue-500/30 group cursor-pointer relative overflow-hidden"
                   style={{ 
                     background: 'var(--color-background)',
                     borderColor: 'rgba(255, 255, 255, 0.05)'

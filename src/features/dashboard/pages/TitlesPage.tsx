@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/features/auth/context/AuthContext'
-import { GradientCard, Button } from '@/shared/ui'
+import { GradientCard, Button, IconMapper } from '@/shared/ui'
 import { Lock, Check, Medal } from 'lucide-react'
 import { getUserProgress, setActiveTitle, type UserProgress } from '@/services/progress.service'
 import { TITLES, Title, getRarityGradient } from '@/services/titles.service'
@@ -118,7 +118,8 @@ export function TitlesPage() {
                 return (
                   <div 
                     key={title.id}
-                    className={`relative rounded-xl p-5 transition-all duration-300 bg-gradient-to-br ${getRarityGradient(title.rarity as Title['rarity'])} ${!isUnlocked ? 'opacity-60' : 'hover:scale-[1.02]'}`}
+                    className={`relative rounded-xl p-5 transition-all duration-300 bg-gradient-to-br ${getRarityGradient(title.rarity as Title['rarity'])} ${!isUnlocked ? 'opacity-60' : 'hover:scale-105 hover:rotate-1 hover:shadow-[0_0_25px_currentColor]'}`}
+                    style={{ color: title.color }}
                   >
                     {/* Active Badge */}
                     {isActive && (
@@ -133,7 +134,7 @@ export function TitlesPage() {
                     {/* Title Info */}
                     <div className="mb-4">
                       <div className="flex items-center gap-3 mb-2">
-                        <span className="text-4xl">{title.icon}</span>
+                        <IconMapper icon={title.icon} size={48} />
                         <div>
                           <h3 className="text-xl font-bold" style={{ color: title.color }}>
                             {title.name}

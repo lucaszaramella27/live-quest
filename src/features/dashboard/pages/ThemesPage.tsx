@@ -201,7 +201,7 @@ function ThemeCard({ theme, isSelected, isSaved, isLocked, onSelect }: ThemeCard
     <div 
       className={`
         relative group cursor-pointer rounded-2xl border-2 transition-all duration-300
-        ${isSelected ? 'border-brand-purple scale-105 ring-4 ring-brand-purple/30' : 'border-white/10 hover:border-white/30'}
+        ${isSelected ? 'border-brand-purple scale-105 ring-4 ring-brand-purple/30' : 'border-white/10 hover:border-brand-purple/50 hover:scale-105 hover:ring-4 hover:ring-brand-purple/20'}
         ${isLocked ? 'opacity-70' : ''}
       `}
       onClick={() => onSelect(theme)}

@@ -1,5 +1,6 @@
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, Unsubscribe } from 'firebase/firestore'
 import { db } from './firebase'
+import type { IconName } from '@/shared/ui'
 
 export interface UserProgress {
   userId: string
@@ -21,7 +22,7 @@ export interface Achievement {
   id: string
   name: string
   description: string
-  icon: string
+  icon: IconName
   rarity: 'bronze' | 'silver' | 'gold' | 'diamond'
   xpReward: number
   condition: (stats: UserStats) => boolean
@@ -76,7 +77,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'first_goal',
     name: 'Primeiro Passo',
     description: 'Crie sua primeira meta',
-    icon: '🎯',
+    icon: 'target',
     rarity: 'bronze',
     xpReward: 50,
     condition: (stats) => stats.totalGoalsCompleted >= 1
@@ -85,7 +86,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'goal_master',
     name: 'Mestre das Metas',
     description: 'Complete 10 metas',
-    icon: '🏆',
+    icon: 'trophy',
     rarity: 'gold',
     xpReward: 200,
     condition: (stats) => stats.totalGoalsCompleted >= 10
@@ -94,7 +95,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'first_task',
     name: 'Produtivo',
     description: 'Complete sua primeira tarefa',
-    icon: '✅',
+    icon: 'check',
     rarity: 'bronze',
     xpReward: 25,
     condition: (stats) => stats.totalTasksCompleted >= 1
@@ -103,7 +104,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'task_warrior',
     name: 'Guerreiro das Tarefas',
     description: 'Complete 50 tarefas',
-    icon: '⚔️',
+    icon: 'sword',
     rarity: 'silver',
     xpReward: 150,
     condition: (stats) => stats.totalTasksCompleted >= 50
@@ -112,7 +113,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'task_legend',
     name: 'Lenda Produtiva',
     description: 'Complete 200 tarefas',
-    icon: '👑',
+    icon: 'crown',
     rarity: 'diamond',
     xpReward: 500,
     condition: (stats) => stats.totalTasksCompleted >= 200
@@ -121,7 +122,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'streak_starter',
     name: 'Consistência Iniciada',
     description: 'Mantenha 7 dias de streak',
-    icon: '🔥',
+    icon: 'flame',
     rarity: 'bronze',
     xpReward: 100,
     condition: (stats) => stats.currentStreak >= 7
@@ -130,7 +131,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'streak_master',
     name: 'Mestre da Consistência',
     description: 'Mantenha 30 dias de streak',
-    icon: '💎',
+    icon: 'diamond',
     rarity: 'gold',
     xpReward: 300,
     condition: (stats) => stats.currentStreak >= 30
@@ -139,7 +140,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'streak_legend',
     name: 'Imparável',
     description: 'Mantenha 100 dias de streak',
-    icon: '🌟',
+    icon: 'star',
     rarity: 'diamond',
     xpReward: 1000,
     condition: (stats) => stats.currentStreak >= 100
@@ -148,7 +149,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'scheduler',
     name: 'Planejador',
     description: 'Agende 5 lives',
-    icon: '📅',
+    icon: 'calendar',
     rarity: 'bronze',
     xpReward: 75,
     condition: (stats) => stats.totalEventsCreated >= 5
@@ -157,7 +158,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'early_adopter',
     name: 'Pioneiro',
     description: 'Use o app por 7 dias',
-    icon: '🚀',
+    icon: 'rocket',
     rarity: 'silver',
     xpReward: 100,
     condition: (stats) => stats.daysActive >= 7
@@ -166,7 +167,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     id: 'dedicated',
     name: 'Dedicado',
     description: 'Use o app por 30 dias',
-    icon: '💪',
+    icon: 'shield',
     rarity: 'gold',
     xpReward: 250,
     condition: (stats) => stats.daysActive >= 30
@@ -295,11 +296,11 @@ export async function unlockAchievement(userId: string, achievementId: string): 
   return true
 }
 
-export async function checkAchievements(userId: string, stats: UserStats): Promise<string[]> {
+export async function checkAchievements(userId: string, stats: UserStats): Promise<Achievement[]> {
   const progress = await getUserProgress(userId)
   if (!progress) return []
   
-  const newAchievements: string[] = []
+  const newAchievements: Achievement[] = []
   
   for (const achievement of ACHIEVEMENTS) {
     if (progress.achievements.includes(achievement.id)) continue
@@ -307,12 +308,52 @@ export async function checkAchievements(userId: string, stats: UserStats): Promi
     if (achievement.condition(stats)) {
       const unlocked = await unlockAchievement(userId, achievement.id)
       if (unlocked) {
-        newAchievements.push(achievement.id)
+        newAchievements.push(achievement)
       }
     }
   }
   
   return newAchievements
+}
+
+/**
+ * Busca estatísticas do usuário de todas as collections
+ */
+export async function getUserStats(userId: string): Promise<UserStats> {
+  try {
+    // Importar dinamicamente para evitar dependências circulares
+    const { getUserActivity } = await import('./activity.service')
+    const { getUserStreak } = await import('./streaks.service')
+    
+    const [activities, streak] = await Promise.all([
+      getUserActivity(userId, 365),
+      getUserStreak(userId)
+    ])
+    
+    const totalTasksCompleted = activities.reduce((sum, a) => sum + a.tasksCompleted, 0)
+    const totalGoalsCompleted = activities.reduce((sum, a) => sum + a.goalsCompleted, 0)
+    const totalEventsCreated = activities.reduce((sum, a) => sum + a.eventsCreated, 0)
+    const daysActive = activities.filter(a => a.tasksCompleted > 0 || a.goalsCompleted > 0 || a.eventsCreated > 0).length
+    
+    return {
+      totalGoalsCompleted,
+      totalTasksCompleted,
+      currentStreak: streak?.currentStreak || 0,
+      longestStreak: streak?.longestStreak || 0,
+      totalEventsCreated,
+      daysActive
+    }
+  } catch (error) {
+    console.error('Erro ao buscar stats:', error)
+    return {
+      totalGoalsCompleted: 0,
+      totalTasksCompleted: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      totalEventsCreated: 0,
+      daysActive: 0
+    }
+  }
 }
 
 // Coins management

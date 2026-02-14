@@ -56,7 +56,7 @@ export function PetAvatar({ level, size = 'md', animated = true, showLevel = tru
           ${animated ? 'animate-float' : ''}
           relative
           group
-          hover:scale-110 transition-transform duration-300
+          hover:scale-110 hover:rotate-12 transition-all duration-300 cursor-pointer
         `}
       >
         {/* Glow effect */}

@@ -4,12 +4,14 @@ import { StreakCalendar } from '@/shared/ui'
 import { Calendar, Flame, TrendingUp, Award } from 'lucide-react'
 import { getUserStreak, type Streak } from '@/services/streaks.service'
 import { getUserProgress, type UserProgress } from '@/services/progress.service'
+import { getUserActivity, formatActivityForCalendar } from '@/services/activity.service'
 import { applyTheme, loadSavedTheme } from '@/services/themes.service'
 
 export function ActivityPage() {
   const { user } = useAuth()
   const [streak, setStreak] = useState<Streak | null>(null)
   const [progress, setProgress] = useState<UserProgress | null>(null)
+  const [activityData, setActivityData] = useState<Array<{ date: string; count: number }>>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -28,29 +30,20 @@ export function ActivityPage() {
     
     try {
       setLoading(true)
-      const [streakData, progressData] = await Promise.all([
+      const [streakData, progressData, activities] = await Promise.all([
         getUserStreak(user.id),
         getUserProgress(user.id),
+        getUserActivity(user.id, 84) // Últimos 84 dias (12 semanas)
       ])
       setStreak(streakData)
       setProgress(progressData)
+      setActivityData(formatActivityForCalendar(activities, 84))
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
     } finally {
       setLoading(false)
     }
   }
-
-  // Generate activity data for StreakCalendar (last 12 weeks)
-  const activityData = Array.from({ length: 84 }, (_, i) => {
-    const date = new Date()
-    date.setDate(date.getDate() - (83 - i))
-    const count = Math.floor(Math.random() * 10)
-    return {
-      date: date.toISOString().split('T')[0],
-      count
-    }
-  })
 
   if (loading) {
     return (

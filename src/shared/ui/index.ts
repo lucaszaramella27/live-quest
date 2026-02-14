@@ -18,4 +18,5 @@ export { PomodoroTimer } from './PomodoroTimer'
 export { Sidebar } from './Sidebar'
 export { DashboardLayout } from './DashboardLayout'
 export { StreamerLogo } from './StreamerLogo'
-
+export { IconMapper } from './IconMapper'
+export type { IconName } from './IconMapper'

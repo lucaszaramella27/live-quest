@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/features/auth/context/AuthContext'
-import { GradientCard, Button, Toast } from '@/shared/ui'
+import { GradientCard, Button, Toast, IconMapper } from '@/shared/ui'
 import { ShoppingBag, Coins, Sparkles, Lock, Crown, Check, ShoppingCart } from 'lucide-react'
 import { getUserProgress, spendCoins, type UserProgress } from '@/services/progress.service'
 import { 
@@ -183,8 +183,12 @@ export function ShopPage() {
             const isPurchased = purchasedItems.includes(item.id)
 
             return (
-              <GradientCard key={item.id} hover className="relative overflow-hidden">
-                <div className={`p-6 rounded-xl bg-gradient-to-br ${getRarityGradient(item.rarity)}`}>
+              <GradientCard 
+                key={item.id} 
+                hover 
+                className="relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(168,85,247,0.4)] hover:rotate-1"
+              >
+                <div className={`p-6 rounded-xl bg-gradient-to-br ${getRarityGradient(item.rarity)} transition-all duration-300`}>
                   {/* Premium Badge */}
                   {item.isPremiumOnly && (
                     <div className="absolute top-3 right-3">
@@ -205,7 +209,9 @@ export function ShopPage() {
                   )}
 
                   {/* Item Icon */}
-                  <div className="text-6xl mb-4 text-center">{item.icon}</div>
+                  <div className="flex justify-center items-center mb-4">
+                    <IconMapper icon={item.icon} size={64} />
+                  </div>
 
                   {/* Item Info */}
                   <div className="mb-4">
@@ -221,7 +227,7 @@ export function ShopPage() {
                     
                     {/* Category Badge */}
                     <div className="inline-flex items-center gap-1 px-2 py-1 bg-white/10 rounded-lg text-xs">
-                      <span>{getCategoryIcon(item.category)}</span>
+                      <IconMapper icon={getCategoryIcon(item.category)} size={16} />
                       <span>{getCategoryName(item.category)}</span>
                     </div>
                   </div>

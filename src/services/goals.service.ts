@@ -1,5 +1,7 @@
-import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore'
+import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, getDoc } from 'firebase/firestore'
 import { db } from './firebase'
+import { recordDailyActivity } from './activity.service'
+import { checkAchievements, getUserStats, addXP, addCoins, type Achievement } from './progress.service'
 
 export interface Goal {
   id: string
@@ -40,9 +42,34 @@ export async function createGoal(userId: string, title: string): Promise<Goal> {
   }
 }
 
-export async function updateGoal(goalId: string, data: Partial<Goal>): Promise<void> {
+export async function updateGoal(goalId: string, data: Partial<Goal>): Promise<Achievement[]> {
   const goalRef = doc(db, 'goals', goalId)
+  
+  let unlockedAchievements: Achievement[] = []
+  
+  // Se a meta está sendo completada, registrar atividade e verificar conquistas
+  if (data.completed === true) {
+    const goalDoc = await getDoc(goalRef)
+    if (goalDoc.exists()) {
+      const goalData = goalDoc.data()
+      const userId = goalData.userId
+      
+      // Registrar atividade (100 XP e 20 coins por meta completada)
+      await recordDailyActivity(userId, 'goal', 100, 20)
+      
+      // Adicionar XP e coins
+      await addXP(userId, 100)
+      await addCoins(userId, 20)
+      
+      // Verificar conquistas desbloqueadas
+      const stats = await getUserStats(userId)
+      unlockedAchievements = await checkAchievements(userId, stats)
+    }
+  }
+  
   await updateDoc(goalRef, data)
+  
+  return unlockedAchievements
 }
 
 export async function deleteGoal(goalId: string): Promise<void> {

@@ -1,8 +1,10 @@
+import type { IconName } from '@/shared/ui'
+
 export interface Title {
   id: string
   name: string
   description: string
-  icon: string
+  icon: IconName
   color: string
   rarity: 'common' | 'rare' | 'epic' | 'legendary' | 'mythic'
   requirement: {
@@ -18,7 +20,7 @@ export const TITLES: Title[] = [
     id: 'novice',
     name: 'Novato',
     description: 'Todo grande streamer começa assim',
-    icon: '🌱',
+    icon: 'seedling',
     color: '#9ca3af',
     rarity: 'common',
     requirement: {
@@ -31,7 +33,7 @@ export const TITLES: Title[] = [
     id: 'streamer',
     name: 'Streamer',
     description: 'Você está indo bem!',
-    icon: '🎮',
+    icon: 'gamepad',
     color: '#06b6d4',
     rarity: 'common',
     requirement: {
@@ -44,7 +46,7 @@ export const TITLES: Title[] = [
     id: 'pro',
     name: 'Pro Player',
     description: 'Agora a coisa ficou séria',
-    icon: '⚡',
+    icon: 'zap',
     color: '#8b5cf6',
     rarity: 'rare',
     requirement: {
@@ -57,7 +59,7 @@ export const TITLES: Title[] = [
     id: 'legend',
     name: 'Lenda',
     description: 'Poucos chegam até aqui',
-    icon: '👑',
+    icon: 'crown',
     color: '#f59e0b',
     rarity: 'epic',
     requirement: {
@@ -70,7 +72,7 @@ export const TITLES: Title[] = [
     id: 'god',
     name: 'Deus do Stream',
     description: 'Você transcendeu a realidade',
-    icon: '✨',
+    icon: 'sparkles',
     color: '#ec4899',
     rarity: 'legendary',
     requirement: {
@@ -83,7 +85,7 @@ export const TITLES: Title[] = [
     id: 'immortal',
     name: 'Imortal',
     description: 'Seu nome será lembrado para sempre',
-    icon: '🔥',
+    icon: 'flame',
     color: '#ff0000',
     rarity: 'mythic',
     requirement: {
@@ -98,7 +100,7 @@ export const TITLES: Title[] = [
     id: 'consistent',
     name: 'Consistente',
     description: 'A consistência é a chave',
-    icon: '📅',
+    icon: 'calendar',
     color: '#10b981',
     rarity: 'rare',
     requirement: {
@@ -111,7 +113,7 @@ export const TITLES: Title[] = [
     id: 'marathoner',
     name: 'Maratonista',
     description: 'Você não para nunca!',
-    icon: '🏃',
+    icon: 'footprints',
     color: '#f59e0b',
     rarity: 'epic',
     requirement: {
@@ -124,7 +126,7 @@ export const TITLES: Title[] = [
     id: 'unstoppable',
     name: 'Imparável',
     description: 'Nada pode te deter',
-    icon: '🚀',
+    icon: 'rocket',
     color: '#ec4899',
     rarity: 'legendary',
     requirement: {
@@ -139,7 +141,7 @@ export const TITLES: Title[] = [
     id: 'taskmaster',
     name: 'Mestre das Tarefas',
     description: 'Organizado e eficiente',
-    icon: '✅',
+    icon: 'check',
     color: '#06b6d4',
     rarity: 'rare',
     requirement: {
@@ -152,7 +154,7 @@ export const TITLES: Title[] = [
     id: 'workaholic',
     name: 'Workaholic',
     description: 'Você nunca descansa',
-    icon: '💼',
+    icon: 'briefcase',
     color: '#8b5cf6',
     rarity: 'epic',
     requirement: {
@@ -165,7 +167,7 @@ export const TITLES: Title[] = [
     id: 'productivity_god',
     name: 'Deus da Produtividade',
     description: 'Produtividade level MÁXIMO',
-    icon: '🌟',
+    icon: 'star',
     color: '#fbbf24',
     rarity: 'legendary',
     requirement: {
@@ -180,7 +182,7 @@ export const TITLES: Title[] = [
     id: 'dreamer',
     name: 'Sonhador',
     description: 'Você tem grandes sonhos',
-    icon: '💭',
+    icon: 'cloud',
     color: '#a78bfa',
     rarity: 'common',
     requirement: {
@@ -193,7 +195,7 @@ export const TITLES: Title[] = [
     id: 'achiever',
     name: 'Conquistador',
     description: 'Você conquista tudo que quer',
-    icon: '🎯',
+    icon: 'target',
     color: '#ec4899',
     rarity: 'rare',
     requirement: {
@@ -206,7 +208,7 @@ export const TITLES: Title[] = [
     id: 'champion',
     name: 'Campeão',
     description: 'Sempre vencendo',
-    icon: '🏆',
+    icon: 'trophy',
     color: '#fbbf24',
     rarity: 'epic',
     requirement: {
@@ -221,7 +223,7 @@ export const TITLES: Title[] = [
     id: 'collector',
     name: 'Colecionador',
     description: 'Você adora conquistas',
-    icon: '🎖️',
+    icon: 'medal',
     color: '#8b5cf6',
     rarity: 'rare',
     requirement: {
@@ -234,7 +236,7 @@ export const TITLES: Title[] = [
     id: 'completionist',
     name: 'Completista',
     description: '100% em tudo!',
-    icon: '💯',
+    icon: 'hundred',
     color: '#fbbf24',
     rarity: 'legendary',
     requirement: {
@@ -249,7 +251,7 @@ export const TITLES: Title[] = [
     id: 'early_bird',
     name: 'Madrugador',
     description: 'Primeiro a chegar, último a sair',
-    icon: '🌅',
+    icon: 'sunrise',
     color: '#f59e0b',
     rarity: 'epic',
     requirement: {
@@ -262,7 +264,7 @@ export const TITLES: Title[] = [
     id: 'night_owl',
     name: 'Coruja Noturna',
     description: 'A noite é jovem',
-    icon: '🦉',
+    icon: 'bird',
     color: '#6366f1',
     rarity: 'rare',
     requirement: {

@@ -1,8 +1,10 @@
+import type { IconName } from '@/shared/ui'
+
 export interface Challenge {
   id: string
   title: string
   description: string
-  icon: string
+  icon: IconName
   type: 'tasks' | 'goals' | 'streak' | 'events' | 'login'
   target: number
   current: number
@@ -17,12 +19,14 @@ export interface Challenge {
   completed: boolean
 }
 
-const WEEKLY_CHALLENGES_POOL = [
+type ChallengeTemplate = Omit<Challenge, 'id' | 'current' | 'startDate' | 'endDate' | 'completed'>
+
+const WEEKLY_CHALLENGES_POOL: ChallengeTemplate[] = [
   // Easy challenges
   {
     title: 'Começando a Semana',
     description: 'Complete 5 tarefas esta semana',
-    icon: '✅',
+    icon: 'check',
     type: 'tasks' as const,
     target: 5,
     reward: { xp: 50, coins: 10 },
@@ -31,7 +35,7 @@ const WEEKLY_CHALLENGES_POOL = [
   {
     title: 'Organizador',
     description: 'Crie 3 eventos no calendário',
-    icon: '📅',
+    icon: 'calendar',
     type: 'events' as const,
     target: 3,
     reward: { xp: 40, coins: 8 },
@@ -40,7 +44,7 @@ const WEEKLY_CHALLENGES_POOL = [
   {
     title: 'Persistência',
     description: 'Mantenha 3 dias de streak',
-    icon: '🔥',
+    icon: 'flame',
     type: 'streak' as const,
     target: 3,
     reward: { xp: 60, coins: 12 },
@@ -51,7 +55,7 @@ const WEEKLY_CHALLENGES_POOL = [
   {
     title: 'Produtivo',
     description: 'Complete 20 tarefas esta semana',
-    icon: '💪',
+    icon: 'shield',
     type: 'tasks' as const,
     target: 20,
     reward: { xp: 150, coins: 30 },
@@ -60,7 +64,7 @@ const WEEKLY_CHALLENGES_POOL = [
   {
     title: 'Focado nas Metas',
     description: 'Complete 2 metas esta semana',
-    icon: '🎯',
+    icon: 'target',
     type: 'goals' as const,
     target: 2,
     reward: { xp: 200, coins: 40 },
@@ -69,7 +73,7 @@ const WEEKLY_CHALLENGES_POOL = [
   {
     title: 'Constância',
     description: 'Mantenha 5 dias de streak',
-    icon: '⚡',
+    icon: 'zap',
     type: 'streak' as const,
     target: 5,
     reward: { xp: 180, coins: 35 },
@@ -78,7 +82,7 @@ const WEEKLY_CHALLENGES_POOL = [
   {
     title: 'Planejador Master',
     description: 'Organize 10 eventos',
-    icon: '📊',
+    icon: 'trending',
     type: 'events' as const,
     target: 10,
     reward: { xp: 120, coins: 25 },
@@ -89,7 +93,7 @@ const WEEKLY_CHALLENGES_POOL = [
   {
     title: 'Maratona',
     description: 'Complete 50 tarefas esta semana',
-    icon: '🏃',
+    icon: 'footprints',
     type: 'tasks' as const,
     target: 50,
     reward: { xp: 400, coins: 80 },
@@ -98,7 +102,7 @@ const WEEKLY_CHALLENGES_POOL = [
   {
     title: 'Conquistador',
     description: 'Complete 5 metas esta semana',
-    icon: '👑',
+    icon: 'crown',
     type: 'goals' as const,
     target: 5,
     reward: { xp: 500, coins: 100 },
@@ -107,7 +111,7 @@ const WEEKLY_CHALLENGES_POOL = [
   {
     title: 'Semana Perfeita',
     description: 'Mantenha 7 dias de streak completos',
-    icon: '🌟',
+    icon: 'star',
     type: 'streak' as const,
     target: 7,
     reward: { xp: 600, coins: 120, title: 'consistent' },
@@ -118,7 +122,7 @@ const WEEKLY_CHALLENGES_POOL = [
   {
     title: 'Workaholic',
     description: 'Complete 100 tarefas esta semana',
-    icon: '💼',
+    icon: 'briefcase',
     type: 'tasks' as const,
     target: 100,
     reward: { xp: 1000, coins: 200 },
@@ -127,7 +131,7 @@ const WEEKLY_CHALLENGES_POOL = [
   {
     title: 'Imparável',
     description: 'Complete 10 metas esta semana',
-    icon: '🚀',
+    icon: 'rocket',
     type: 'goals' as const,
     target: 10,
     reward: { xp: 1500, coins: 300 },

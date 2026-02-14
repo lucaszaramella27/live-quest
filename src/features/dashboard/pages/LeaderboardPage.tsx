@@ -132,7 +132,7 @@ export function LeaderboardPage() {
         <div className="grid grid-cols-3 gap-4 mb-12 max-w-4xl mx-auto">
           {/* 2nd Place */}
           {leaderboard[1] && (
-            <GradientCard className="order-1 mt-8">
+            <GradientCard className="order-1 mt-8 transition-all duration-300 hover:scale-105 hover:-translate-y-2 hover:shadow-xl">
               <div className="text-center p-6">
                 <Medal className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                 <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gray-400/20 to-gray-500/20 mx-auto mb-3 flex items-center justify-center text-3xl">
@@ -150,7 +150,7 @@ export function LeaderboardPage() {
 
           {/* 1st Place */}
           {leaderboard[0] && (
-            <GradientCard className="order-2">
+            <GradientCard className="order-2 transition-all duration-300 hover:scale-110 hover:-translate-y-3 hover:shadow-[0_0_50px_rgba(234,179,8,0.4)]">
               <div className="text-center p-6">
                 <Trophy className="w-16 h-16 text-yellow-500 mx-auto mb-3 animate-bounce" />
                 <div className="w-24 h-24 rounded-full bg-gradient-to-br from-yellow-500/20 to-orange-500/20 mx-auto mb-3 flex items-center justify-center text-4xl border-4 border-yellow-500/40">
@@ -168,7 +168,7 @@ export function LeaderboardPage() {
 
           {/* 3rd Place */}
           {leaderboard[2] && (
-            <GradientCard className="order-3 mt-8">
+            <GradientCard className="order-3 mt-8 transition-all duration-300 hover:scale-105 hover:-translate-y-2 hover:shadow-xl">
               <div className="text-center p-6">
                 <Award className="w-12 h-12 text-amber-600 mx-auto mb-3" />
                 <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-600/20 to-amber-700/20 mx-auto mb-3 flex items-center justify-center text-3xl">
@@ -194,7 +194,8 @@ export function LeaderboardPage() {
                 key={user.id}
                 className={`
                   p-4 rounded-xl bg-gradient-to-br ${getRankBg(index + 1)} border
-                  hover:scale-105 transition-all duration-300
+                  hover:scale-[1.02] hover:shadow-xl transition-all duration-300
+                  ${index < 3 ? 'hover:shadow-purple-500/30' : ''}
                 `}
               >
                 <div className="flex items-center justify-between">

@@ -1,5 +1,7 @@
 import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, orderBy } from 'firebase/firestore'
 import { db } from './firebase'
+import { recordDailyActivity } from './activity.service'
+import { checkAchievements, getUserStats, addXP, addCoins, type Achievement } from './progress.service'
 
 export interface CalendarEvent {
   id: string
@@ -27,7 +29,7 @@ export async function getUserEvents(userId: string): Promise<CalendarEvent[]> {
   })) as CalendarEvent[]
 }
 
-export async function createEvent(userId: string, event: Omit<CalendarEvent, 'id' | 'userId' | 'createdAt'>): Promise<CalendarEvent> {
+export async function createEvent(userId: string, event: Omit<CalendarEvent, 'id' | 'userId' | 'createdAt'>): Promise<{ event: CalendarEvent; achievements: Achievement[] }> {
   const eventsRef = collection(db, 'calendar')
   const newEvent = {
     userId,
@@ -37,9 +39,23 @@ export async function createEvent(userId: string, event: Omit<CalendarEvent, 'id
   
   const docRef = await addDoc(eventsRef, newEvent)
   
+  // Registrar atividade (5 XP e 1 coin por evento criado)
+  await recordDailyActivity(userId, 'event', 5, 1)
+  
+  // Adicionar XP e coins
+  await addXP(userId, 5)
+  await addCoins(userId, 1)
+  
+  // Verificar conquistas desbloqueadas
+  const stats = await getUserStats(userId)
+  const unlockedAchievements = await checkAchievements(userId, stats)
+  
   return {
-    id: docRef.id,
-    ...newEvent,
+    event: {
+      id: docRef.id,
+      ...newEvent,
+    },
+    achievements: unlockedAchievements
   }
 }
 

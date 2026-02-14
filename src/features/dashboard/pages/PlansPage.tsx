@@ -102,10 +102,10 @@ export function PlansPage() {
           {plans.map((plan) => (
             <div
               key={plan.name}
-              className={`relative rounded-2xl p-8 transition-all duration-300 ${
+              className={`relative rounded-2xl p-8 transition-all duration-300 hover:scale-[1.02] ${
                 plan.highlighted
-                  ? 'bg-brand-dark-secondary border-2 border-brand-purple/50'
-                  : 'bg-brand-dark-secondary/50 border border-white/5'
+                  ? 'bg-brand-dark-secondary border-2 border-brand-purple/50 hover:shadow-[0_0_40px_rgba(168,85,247,0.3)] hover:border-brand-purple/70'
+                  : 'bg-brand-dark-secondary/50 border border-white/5 hover:border-white/20 hover:shadow-xl'
               }`}
             >
               {plan.badge && (
@@ -137,7 +137,11 @@ export function PlansPage() {
                 <Button
                   variant={plan.highlighted ? 'primary' : 'secondary'}
                   size="lg"
-                  className="w-full"
+                  className={`w-full ${
+                    plan.highlighted && plan.name !== 'Free'
+                      ? 'hover:scale-105 hover:shadow-2xl hover:shadow-purple-500/50'
+                      : ''
+                  }`}
                   disabled={plan.name === 'Free'}
                 >
                   {plan.cta}
