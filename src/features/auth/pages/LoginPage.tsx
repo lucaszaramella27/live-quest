@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { signInWithGoogle, signInWithEmail, signUpWithEmail } from '@/services/auth.service'
 import { Button, Toast } from '@/shared/ui'
-import { Mail, Lock, User, Sparkles } from 'lucide-react'
+import { Mail, Lock, User, Sparkles, ChevronLeft, Zap } from 'lucide-react'
 
 type AuthMode = 'login' | 'register'
 
@@ -83,43 +83,81 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--color-background)' }}>
-      <div className="min-h-screen flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen relative" style={{ background: 'var(--color-background)' }}>
+      {/* Subtle Background */}
+      <div className="absolute inset-0 overflow-hidden opacity-30">
+        <div 
+          className="absolute w-96 h-96 rounded-full blur-3xl" 
+          style={{ 
+            top: '-5%', 
+            left: '-5%',
+            background: 'radial-gradient(circle, #3b82f6 0%, transparent 70%)'
+          }} 
+        />
+        <div 
+          className="absolute w-96 h-96 rounded-full blur-3xl" 
+          style={{ 
+            bottom: '-5%', 
+            right: '-5%',
+            background: 'radial-gradient(circle, #8b5cf6 0%, transparent 70%)'
+          }} 
+        />
+      </div>
+
+      {/* Back Button */}
+      <div className="absolute top-6 left-6 z-10">
+        <button
+          onClick={() => navigate('/')}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg border transition-all hover:scale-105"
+          style={{
+            background: 'rgba(59, 130, 246, 0.1)',
+            borderColor: 'rgba(59, 130, 246, 0.3)',
+            color: '#3b82f6'
+          }}
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span className="text-sm font-medium">Voltar</span>
+        </button>
+      </div>
+
+      <div className="relative min-h-screen flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
           {/* Logo */}
-          <div className="text-center mb-8 animate-fade-in-up">
+          <div className="text-center mb-8">
             <div className="flex flex-col items-center mb-6">
-              <div className="transition-all duration-300 hover:scale-110 hover:animate-pulse cursor-pointer mb-3">
-                <img src="/logo.png" alt="LiveQuest Logo" className="w-32 h-32" />
-              </div>
-              <span className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>
+              <img 
+                src="/logo.png" 
+                alt="LiveQuest Logo" 
+                className="w-24 h-24 mb-3 transition-transform hover:scale-105"
+              />
+              <span className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
                 LiveQuest
               </span>
             </div>
-            <h1 className="text-4xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>
+            <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>
               {mode === 'login' ? 'Bem-vindo de volta!' : 'Crie sua conta'}
             </h1>
             <p className="flex items-center gap-2 justify-center" style={{ color: 'var(--color-text-secondary)' }}>
-              <Sparkles className="w-4 h-4" />
-              {mode === 'login' ? 'Continue sua jornada épica' : 'Comece sua jornada épica'}
+              <Sparkles className="w-4 h-4" style={{ color: '#3b82f6' }} />
+              {mode === 'login' ? 'Continue sua jornada' : 'Comece sua jornada'}
             </p>
           </div>
 
           {/* Auth Card */}
           <div 
-            className="backdrop-blur-xl rounded-3xl p-8 shadow-2xl animate-scale-in border"
+            className="rounded-2xl p-8 shadow-xl border"
             style={{ 
               background: 'var(--color-background-secondary)',
-              borderColor: 'rgba(255, 255, 255, 0.05)'
+              borderColor: 'rgba(255, 255, 255, 0.1)'
             }}
           >
             {/* Tabs */}
-            <div className="flex gap-2 mb-8 p-1.5 rounded-2xl" style={{ background: 'var(--color-background-tertiary)' }}>
+            <div className="flex gap-2 mb-6 p-1 rounded-xl" style={{ background: 'var(--color-background-tertiary)' }}>
               <button
                 onClick={() => setMode('login')}
-                className="flex-1 py-3 px-4 rounded-xl font-medium transition-all duration-300"
+                className="flex-1 py-2.5 px-4 rounded-lg font-medium transition-all"
                 style={{
-                  background: mode === 'login' ? '#3b82f6' : 'transparent',
+                  background: mode === 'login' ? 'linear-gradient(135deg, #3b82f6, #8b5cf6)' : 'transparent',
                   color: mode === 'login' ? '#ffffff' : 'var(--color-text-secondary)'
                 }}
               >
@@ -127,9 +165,9 @@ export function LoginPage() {
               </button>
               <button
                 onClick={() => setMode('register')}
-                className="flex-1 py-3 px-4 rounded-xl font-medium transition-all duration-300"
+                className="flex-1 py-2.5 px-4 rounded-lg font-medium transition-all"
                 style={{
-                  background: mode === 'register' ? '#3b82f6' : 'transparent',
+                  background: mode === 'register' ? 'linear-gradient(135deg, #3b82f6, #8b5cf6)' : 'transparent',
                   color: mode === 'register' ? '#ffffff' : 'var(--color-text-secondary)'
                 }}
               >
@@ -140,7 +178,7 @@ export function LoginPage() {
             {/* Email/Password Form */}
             <form onSubmit={handleEmailAuth} className="space-y-4">
               {mode === 'register' && (
-                <div className="relative animate-fade-in-up">
+                <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: 'var(--color-text-secondary)' }} />
                   <input
                     type="text"
@@ -148,7 +186,7 @@ export function LoginPage() {
                     onChange={(e) => setDisplayName(e.target.value)}
                     placeholder="Seu nome"
                     required
-                    className="w-full pl-11 pr-4 py-3.5 rounded-xl transition-all outline-none border"
+                    className="w-full pl-11 pr-4 py-3 rounded-lg transition-all outline-none border focus:border-blue-500"
                     style={{
                       background: 'var(--color-background-tertiary)',
                       borderColor: 'rgba(255, 255, 255, 0.1)',
@@ -166,7 +204,7 @@ export function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="seu@email.com"
                   required
-                  className="w-full pl-11 pr-4 py-3.5 rounded-xl transition-all outline-none border"
+                  className="w-full pl-11 pr-4 py-3 rounded-lg transition-all outline-none border focus:border-blue-500"
                   style={{
                     background: 'var(--color-background-tertiary)',
                     borderColor: 'rgba(255, 255, 255, 0.1)',
@@ -184,7 +222,7 @@ export function LoginPage() {
                   placeholder="••••••••"
                   required
                   minLength={6}
-                  className="w-full pl-11 pr-4 py-3.5 rounded-xl transition-all outline-none border"
+                  className="w-full pl-11 pr-4 py-3 rounded-lg transition-all outline-none border focus:border-blue-500"
                   style={{
                     background: 'var(--color-background-tertiary)',
                     borderColor: 'rgba(255, 255, 255, 0.1)',
@@ -198,8 +236,12 @@ export function LoginPage() {
                 loading={loading}
                 variant="primary"
                 size="lg"
-                className="w-full mt-6"
-                style={{ background: '#3b82f6', color: '#ffffff' }}
+                className="w-full mt-2 hover:opacity-90 transition-opacity"
+                style={{ 
+                  background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
+                  color: '#ffffff'
+                }}
+                icon={<Zap className="w-5 h-5" />}
               >
                 {mode === 'login' ? 'Entrar' : 'Criar Conta'}
               </Button>
@@ -211,7 +253,9 @@ export function LoginPage() {
                 <div className="w-full border-t" style={{ borderColor: 'rgba(255, 255, 255, 0.1)' }}></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-4" style={{ background: 'var(--color-background-secondary)', color: 'var(--color-text-secondary)' }}>ou</span>
+                <span className="px-4" style={{ background: 'var(--color-background-secondary)', color: 'var(--color-text-secondary)' }}>
+                  ou
+                </span>
               </div>
             </div>
 
@@ -219,7 +263,7 @@ export function LoginPage() {
             <button
               onClick={handleGoogleSignIn}
               disabled={loading}
-              className="w-full py-3.5 px-4 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-3 border hover:shadow-md disabled:opacity-50"
+              className="w-full py-3 px-4 rounded-lg font-medium transition-all flex items-center justify-center gap-3 border hover:shadow-md hover:scale-[1.02] disabled:opacity-50"
               style={{
                 background: '#ffffff',
                 color: '#3c4043',
@@ -245,7 +289,7 @@ export function LoginPage() {
 
           {/* Footer Text */}
           <p className="text-center mt-6 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-            Feito com 💜 para streamers que querem crescer
+            © 2026 LiveQuest • Feito com 💜 para streamers
           </p>
         </div>
       </div>

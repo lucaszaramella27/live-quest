@@ -1,6 +1,8 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './features/auth/context/AuthContext'
 import { ProtectedRoute } from './features/auth/components/ProtectedRoute'
+import { AdminRoute } from './features/auth/components/AdminRoute'
 import { DashboardLayout } from './shared/ui'
 import { LandingPage } from './features/auth/pages/LandingPage'
 import { LoginPage } from './features/auth/pages/LoginPage'
@@ -16,8 +18,37 @@ import { TwitchPage } from './features/dashboard/pages/TwitchPage'
 import { TwitchCallbackPage } from './features/dashboard/pages/TwitchCallbackPage'
 import { ActivityPage } from './features/dashboard/pages/ActivityPage'
 import { ChallengesPage } from './features/dashboard/pages/ChallengesPage'
+import { AdminPage } from './features/dashboard/pages/AdminPage'
+import { loadSavedTheme, applyTheme } from './services/themes.service'
 
 function App() {
+  // Apply saved theme on app mount (before any component renders)
+  useEffect(() => {
+    const savedTheme = loadSavedTheme()
+    applyTheme(savedTheme)
+
+    // Listen for theme changes from storage (other tabs) or custom events
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'selectedTheme') {
+        const newTheme = loadSavedTheme()
+        applyTheme(newTheme)
+      }
+    }
+
+    const handleThemeChange = () => {
+      const newTheme = loadSavedTheme()
+      applyTheme(newTheme)
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    window.addEventListener('themeChanged', handleThemeChange)
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('themeChanged', handleThemeChange)
+    }
+  }, [])
+
   return (
     <BrowserRouter>
       <AuthProvider>
@@ -131,6 +162,16 @@ function App() {
                   <ChallengesPage />
                 </DashboardLayout>
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <DashboardLayout>
+                  <AdminPage />
+                </DashboardLayout>
+              </AdminRoute>
             }
           />
         </Routes>

@@ -14,6 +14,8 @@ export interface UserProgress {
   monthlyXP: number
   userName?: string
   userPhotoURL?: string
+  isPremium: boolean
+  premiumExpiresAt?: Date | null
   createdAt: Date
   updatedAt: Date
 }
@@ -182,10 +184,13 @@ export async function getUserProgress(userId: string): Promise<UserProgress | nu
     return null
   }
   
+  const data = progressDoc.data()
   return {
-    ...progressDoc.data(),
-    createdAt: progressDoc.data().createdAt?.toDate() || new Date(),
-    updatedAt: progressDoc.data().updatedAt?.toDate() || new Date(),
+    ...data,
+    isPremium: data.isPremium ?? false,
+    premiumExpiresAt: data.premiumExpiresAt?.toDate() || null,
+    createdAt: data.createdAt?.toDate() || new Date(),
+    updatedAt: data.updatedAt?.toDate() || new Date(),
   } as UserProgress
 }
 
@@ -208,6 +213,8 @@ export function subscribeToUserProgress(
     const data = snapshot.data()
     callback({
       ...data,
+      isPremium: data.isPremium ?? false,
+      premiumExpiresAt: data.premiumExpiresAt?.toDate() || null,
       createdAt: data.createdAt?.toDate() || new Date(),
       updatedAt: data.updatedAt?.toDate() || new Date(),
     } as UserProgress)
@@ -231,6 +238,8 @@ export async function createUserProgress(userId: string, userName?: string, user
     monthlyXP: 0,
     userName,
     userPhotoURL,
+    isPremium: false,
+    premiumExpiresAt: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   }
@@ -455,4 +464,53 @@ export async function resetMonthlyXP(): Promise<void> {
   // This should be called by a Cloud Function or scheduled task
   // For now, it's a placeholder for future implementation
   console.log('Monthly XP reset would happen here')
+}
+
+// Premium functions
+export async function activatePremium(userId: string, durationDays: number | 'lifetime' = 'lifetime'): Promise<boolean> {
+  const progressRef = doc(db, 'userProgress', userId)
+  const progressDoc = await getDoc(progressRef)
+  
+  if (!progressDoc.exists()) {
+    await createUserProgress(userId)
+  }
+  
+  const expiresAt = durationDays === 'lifetime' ? null : new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000)
+  
+  await updateDoc(progressRef, {
+    isPremium: true,
+    premiumExpiresAt: expiresAt,
+    updatedAt: new Date(),
+  })
+  
+  return true
+}
+
+export async function deactivatePremium(userId: string): Promise<boolean> {
+  const progressRef = doc(db, 'userProgress', userId)
+  const progressDoc = await getDoc(progressRef)
+  
+  if (!progressDoc.exists()) return false
+  
+  await updateDoc(progressRef, {
+    isPremium: false,
+    premiumExpiresAt: null,
+    updatedAt: new Date(),
+  })
+  
+  return true
+}
+
+export function isPremiumActive(progress: UserProgress | null): boolean {
+  if (!progress || !progress.isPremium) return false
+  
+  // If no expiration date, premium is lifetime
+  if (!progress.premiumExpiresAt) return true
+  
+  // Check if premium hasn't expired
+  const expirationDate = progress.premiumExpiresAt instanceof Date 
+    ? progress.premiumExpiresAt 
+    : new Date(progress.premiumExpiresAt)
+  
+  return expirationDate > new Date()
 }

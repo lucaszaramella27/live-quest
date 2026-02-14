@@ -3,6 +3,7 @@ import { useAuth } from '@/features/auth/context/AuthContext'
 import { GradientCard, Button, Toast } from '@/shared/ui'
 import { Check, Lock, Crown, Palette, Save, RotateCcw } from 'lucide-react'
 import { THEMES, applyTheme, loadSavedTheme, type Theme } from '@/services/themes.service'
+import { getUserProgress, type UserProgress } from '@/services/progress.service'
 
 export function ThemesPage() {
   const { user } = useAuth()
@@ -11,14 +12,31 @@ export function ThemesPage() {
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState<'success' | 'streak' | 'goal' | 'task' | 'achievement'>('success')
   const [showToast, setShowToast] = useState(false)
-  const isPremium = (user as any)?.isPremium || false
+  const [progress, setProgress] = useState<UserProgress | null>(null)
 
+  const isPremium = progress?.isPremium || false
   const hasChanges = savedTheme.id !== previewTheme.id
 
   useEffect(() => {
     // Apply saved theme on mount
     applyTheme(savedTheme)
   }, [])
+
+  useEffect(() => {
+    if (user) {
+      loadUserProgress()
+    }
+  }, [user])
+
+  async function loadUserProgress() {
+    if (!user) return
+    try {
+      const progressData = await getUserProgress(user.id)
+      setProgress(progressData)
+    } catch (error) {
+      console.error('Erro ao carregar progresso:', error)
+    }
+  }
 
   // React to preview changes and apply immediately
   useEffect(() => {

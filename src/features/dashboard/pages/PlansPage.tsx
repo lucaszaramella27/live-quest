@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { Button } from '@/shared/ui'
+import { useAuth } from '@/features/auth/context/AuthContext'
+import { Button, Toast } from '@/shared/ui'
+import { activatePremium, getUserProgress, isPremiumActive } from '@/services/progress.service'
 import { 
   Crown, 
   Check,
@@ -8,11 +10,60 @@ import {
   TrendingUp,
   Users,
   BarChart3,
-  Sparkles
+  Sparkles,
+  Zap
 } from 'lucide-react'
 
 export function PlansPage() {
+  const { user } = useAuth()
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly')
+  const [activating, setActivating] = useState(false)
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ 
+    show: false, 
+    message: '', 
+    type: 'success' 
+  })
+
+  const handleActivatePremium = async () => {
+    if (!user) return
+    
+    setActivating(true)
+    try {
+      await activatePremium(user.id, 'lifetime')
+      
+      // Verify activation
+      const progress = await getUserProgress(user.id)
+      const isActive = isPremiumActive(progress)
+      
+      if (isActive) {
+        setToast({
+          show: true,
+          message: '🎉 Premium ativado com sucesso! Aproveite todos os recursos!',
+          type: 'success'
+        })
+        
+        // Reload page after 2 seconds to update UI
+        setTimeout(() => {
+          window.location.reload()
+        }, 2000)
+      } else {
+        setToast({
+          show: true,
+          message: '⚠️ Erro ao verificar ativação. Tente novamente.',
+          type: 'error'
+        })
+      }
+    } catch (error) {
+      console.error('Erro ao ativar premium:', error)
+      setToast({
+        show: true,
+        message: '❌ Erro ao ativar premium. Tente novamente.',
+        type: 'error'
+      })
+    } finally {
+      setActivating(false)
+    }
+  }
 
   const plans = [
     {
@@ -54,6 +105,47 @@ export function PlansPage() {
 
   return (
     <div>
+      {/* Dev Mode: Activate Premium Banner */}
+      <div className="mb-8 p-6 rounded-2xl border relative overflow-hidden" style={{
+        background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.1) 0%, rgba(249, 115, 22, 0.1) 100%)',
+        borderColor: 'rgba(251, 191, 36, 0.3)'
+      }}>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Zap className="w-5 h-5" style={{ color: '#f59e0b' }} />
+              <h3 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>
+                Modo Desenvolvimento
+              </h3>
+            </div>
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              Ative o Premium gratuitamente para testar todos os recursos da plataforma
+            </p>
+          </div>
+          <Button
+            onClick={handleActivatePremium}
+            disabled={activating}
+            variant="primary"
+            className="flex-shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+              color: 'white'
+            }}
+            icon={<Crown className="w-4 h-4" />}
+          >
+            {activating ? 'Ativando...' : 'Ativar Premium'}
+          </Button>
+        </div>
+      </div>
+
+      {/* Toast */}
+      <Toast
+        show={toast.show}
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ ...toast, show: false })}
+      />
+
       {/* Page Header */}
       <div className="text-center mb-12">
         <div className="inline-flex items-center gap-2 mb-4">

@@ -11,7 +11,7 @@ export function RegisterPage() {
       navigate('/dashboard')
     } else {
       // Redireciona para login (que tem tabs de login/cadastro)
-      navigate('/login', { replace: true })
+      navigate('/login', { replace: true, state: { mode: 'register' } })
     }
   }, [user, navigate])
 

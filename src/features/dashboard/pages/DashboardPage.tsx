@@ -9,13 +9,15 @@ import {
   Plus,
   Zap,
   Award,
-  Coins
+  Coins,
+  Crown,
+  Sparkles,
+  ArrowRight
 } from 'lucide-react'
 import { getUserGoals, createGoal, updateGoal, type Goal } from '@/services/goals.service'
 import { getUserChecklists, createChecklistItem, updateChecklistItem, type ChecklistItem } from '@/services/checklists.service'
 import { getUserStreak, type Streak } from '@/services/streaks.service'
 import { getUserProgress, createUserProgress, subscribeToUserProgress, type UserProgress, type Achievement } from '@/services/progress.service'
-import { applyTheme, loadSavedTheme, type Theme } from '@/services/themes.service'
 
 const motivationalMessages = {
   taskCompleted: [
@@ -43,7 +45,6 @@ export function DashboardPage() {
   const [checklists, setChecklists] = useState<ChecklistItem[]>([])
   const [streak, setStreak] = useState<Streak | null>(null)
   const [progress, setProgress] = useState<UserProgress | null>(null)
-  const [, setCurrentTheme] = useState<Theme>(loadSavedTheme())
   const [loading, setLoading] = useState(true)
   const [showOnboarding, setShowOnboarding] = useState(false)
 
@@ -62,34 +63,6 @@ export function DashboardPage() {
     message: string
     type: 'success' | 'streak' | 'goal' | 'task' | 'achievement'
   }>({ show: false, message: '', type: 'success' })
-
-  useEffect(() => {
-    const savedTheme = loadSavedTheme()
-    setCurrentTheme(savedTheme)
-    applyTheme(savedTheme)
-    
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'selectedTheme') {
-        const newTheme = loadSavedTheme()
-        setCurrentTheme(newTheme)
-        applyTheme(newTheme)
-      }
-    }
-    
-    const handleThemeChange = () => {
-      const newTheme = loadSavedTheme()
-      setCurrentTheme(newTheme)
-      applyTheme(newTheme)
-    }
-    
-    window.addEventListener('storage', handleStorageChange)
-    window.addEventListener('themeChanged', handleThemeChange)
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange)
-      window.removeEventListener('themeChanged', handleThemeChange)
-    }
-  }, [])
 
   useEffect(() => {
     if (user) {
@@ -314,6 +287,83 @@ export function DashboardPage() {
             }
           </p>
         </div>
+
+        {/* Premium Offer Banner - Only show if not premium */}
+        {!progress?.isPremium && (
+          <div 
+            className="relative overflow-hidden rounded-2xl p-6 mb-8 border cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-xl group"
+            onClick={() => window.location.href = '/plans'}
+            style={{ 
+              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
+              borderColor: 'rgba(59, 130, 246, 0.3)'
+            }}
+          >
+            {/* Animated background gradient */}
+            <div 
+              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+              style={{
+                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%)'
+              }}
+            />
+            
+            {/* Sparkle decorations */}
+            <div className="absolute top-4 right-4 opacity-20">
+              <Sparkles className="w-16 h-16" style={{ color: '#fbbf24' }} />
+            </div>
+            <div className="absolute bottom-4 left-4 opacity-10">
+              <Sparkles className="w-12 h-12" style={{ color: '#8b5cf6' }} />
+            </div>
+
+            <div className="relative z-10 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                {/* Crown icon */}
+                <div 
+                  className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300"
+                  style={{ 
+                    background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                    boxShadow: '0 4px 20px rgba(251, 191, 36, 0.3)'
+                  }}
+                >
+                  <Crown className="w-7 h-7 text-white" />
+                </div>
+
+                {/* Text content */}
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>
+                      Desbloqueie o Premium
+                    </h3>
+                    <span 
+                      className="px-2 py-0.5 rounded-full text-xs font-bold"
+                      style={{ 
+                        background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                        color: 'white'
+                      }}
+                    >
+                      🔥 OFERTA
+                    </span>
+                  </div>
+                  <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                    Recursos exclusivos, temas ilimitados, prioridade no suporte e muito mais!
+                  </p>
+                </div>
+              </div>
+
+              {/* CTA Button */}
+              <Button
+                variant="primary"
+                className="flex-shrink-0 group-hover:scale-110 transition-all duration-300 shadow-lg"
+                style={{ 
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+                  color: 'white'
+                }}
+                icon={<ArrowRight className="w-4 h-4" />}
+              >
+                Ver Planos
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Stats Row - Compact */}
         <div className="grid grid-cols-3 gap-4 mb-8">

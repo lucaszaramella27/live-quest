@@ -23,7 +23,7 @@ export function ShopPage() {
   const [toastType, setToastType] = useState<'success' | 'streak' | 'goal' | 'task' | 'achievement'>('success')
   const [showToast, setShowToast] = useState(false)
 
-  const isPremium = (user as any)?.isPremium || false
+  const isPremium = progress?.isPremium || false
 
   useEffect(() => {
     if (user) {

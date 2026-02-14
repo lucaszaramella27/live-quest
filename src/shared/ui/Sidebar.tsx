@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { signOut } from '@/services/auth.service'
+import { isAdmin } from '@/services/admin.service'
 import { PetAvatar } from './PetAvatar'
 import { XPBar } from './XPBar'
 import {
@@ -17,7 +18,10 @@ import {
   Coins as CoinsIcon,
   Twitch,
   Calendar,
-  Flame
+  Flame,
+  Crown,
+  Sparkles,
+  Shield
 } from 'lucide-react'
 import type { UserProgress } from '@/services/progress.service'
 
@@ -50,6 +54,11 @@ export function Sidebar({ progress, onClose }: SidebarProps) {
     { path: '/shop', icon: ShoppingBag, label: 'Loja' },
     { path: '/leaderboard', icon: Users, label: 'Ranking' },
   ]
+
+  // Add Admin option only for admins
+  if (isAdmin(user?.id)) {
+    navItems.push({ path: '/admin', icon: Shield, label: 'Admin', badge: '🔒' })
+  }
 
   const handleNavigation = (path: string) => {
     navigate(path)
@@ -181,6 +190,97 @@ export function Sidebar({ progress, onClose }: SidebarProps) {
             })}
           </div>
         </nav>
+
+        {/* Premium Banner */}
+        {!isCollapsed && (
+          <div className="px-4 pb-4">
+            {progress?.isPremium ? (
+              /* Premium Active Badge */
+              <div
+                className="w-full relative overflow-hidden rounded-xl p-4"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(249, 115, 22, 0.2) 100%)',
+                  border: '1px solid rgba(251, 191, 36, 0.4)'
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  {/* Crown icon */}
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 animate-pulse"
+                    style={{
+                      background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                      boxShadow: '0 4px 12px rgba(251, 191, 36, 0.4)'
+                    }}
+                  >
+                    <Crown size={20} className="text-white" />
+                  </div>
+
+                  {/* Text */}
+                  <div className="flex-1 text-left">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="font-bold text-sm" style={{ color: '#fbbf24' }}>
+                        Premium Ativo
+                      </span>
+                      <Sparkles size={14} style={{ color: '#fbbf24' }} />
+                    </div>
+                    <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                      Todos os recursos liberados!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Premium Offer Banner */
+              <button
+                onClick={() => handleNavigation('/plans')}
+                className="w-full relative overflow-hidden rounded-xl p-4 transition-all duration-300 hover:scale-105 group"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(249, 115, 22, 0.15) 100%)',
+                  border: '1px solid rgba(251, 191, 36, 0.3)'
+                }}
+              >
+                {/* Sparkle decoration */}
+                <div className="absolute top-1 right-1 opacity-20 group-hover:opacity-40 transition-opacity">
+                  <Sparkles size={16} style={{ color: '#fbbf24' }} />
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {/* Crown icon */}
+                  <div
+                    className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform"
+                    style={{
+                      background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
+                      boxShadow: '0 4px 12px rgba(251, 191, 36, 0.3)'
+                    }}
+                  >
+                    <Crown size={20} className="text-white" />
+                  </div>
+
+                  {/* Text */}
+                  <div className="flex-1 text-left">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="font-bold text-sm" style={{ color: '#fbbf24' }}>
+                        Premium
+                      </span>
+                      <span
+                        className="px-1.5 py-0.5 rounded text-[10px] font-bold"
+                        style={{
+                          background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                          color: 'white'
+                        }}
+                      >
+                        OFERTA
+                      </span>
+                    </div>
+                    <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                      Desbloqueie tudo!
+                    </p>
+                  </div>
+                </div>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Footer - Logout */}
         <div className="p-4 border-t border-white/5">
