@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isOwner(userId);
+      allow delete: if false; // Nunca deletar usuários via client
+    }
+    
+    // Goals collection
+    match /goals/{goalId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    // Streaks collection
+    match /streaks/{streakId} {
+      allow read: if isAuthenticated() && streakId == request.auth.uid;
+      allow create, update: if isAuthenticated() && streakId == request.auth.uid;
+      allow delete: if false;
+    }
+    
+    // Checklists collection
+    match /checklists/{checklistId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    // Calendar collection
+    match /calendar/{eventId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    // User Progress collection
+    match /userProgress/{progressId} {
+      allow read: if isAuthenticated() && progressId == request.auth.uid;
+      allow create, update: if isAuthenticated() && progressId == request.auth.uid;
+      allow delete: if false;
+    }
+    
+    // Twitch Integrations collection
+    match /twitchIntegrations/{integrationId} {
+      allow read: if isAuthenticated() && integrationId == request.auth.uid;
+      allow create, update: if isAuthenticated() && integrationId == request.auth.uid;
+      allow delete: if false;
+    }
+    
+    // Twitch Goals collection
+    match /twitchGoals/{goalId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+    
+    // Twitch Events collection (para EventSub)
+    match /twitchEvents/{eventId} {
+      // Somente leitura para usuários autenticados (eventos são criados pelo backend)
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if false; // Criado apenas pelo Cloud Function
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if false;
+    }
+  }
+}
