@@ -111,9 +111,14 @@ export function Sidebar({ progress, onClose }: SidebarProps) {
 
               {/* User Name */}
               <div className="text-center">
-                <h3 className="font-bold text-lg" style={{ color: 'var(--color-text)' }}>
-                  {user?.displayName || user?.email?.split('@')[0] || 'Streamer'}
-                </h3>
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <h3 className="font-bold text-lg" style={{ color: 'var(--color-text)' }}>
+                    {user?.displayName || user?.email?.split('@')[0] || 'Streamer'}
+                  </h3>
+                  {progress?.isPremium && (
+                    <Crown className="w-5 h-5 text-yellow-500 animate-pulse" />
+                  )}
+                </div>
                 <p className="text-sm" style={{ color: 'var(--color-primary)' }}>Nível {level}</p>
               </div>
 

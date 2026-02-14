@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { GradientCard, Button, Toast, IconMapper } from '@/shared/ui'
 import { ShoppingBag, Coins, Sparkles, Lock, Crown, Check, ShoppingCart } from 'lucide-react'
-import { getUserProgress, spendCoins, type UserProgress } from '@/services/progress.service'
+import { getUserProgress, subscribeToUserProgress, spendCoins, type UserProgress } from '@/services/progress.service'
 import { 
   SHOP_ITEMS, 
   canPurchaseItem, 
@@ -26,10 +26,20 @@ export function ShopPage() {
   const isPremium = progress?.isPremium || false
 
   useEffect(() => {
-    if (user) {
-      loadProgress()
-      loadPurchasedItems()
-    }
+    if (!user) return
+
+    // Initial load
+    loadProgress()
+    loadPurchasedItems()
+
+    // Subscribe to real-time progress updates
+    const unsubscribe = subscribeToUserProgress(user.id, (updatedProgress) => {
+      if (updatedProgress) {
+        setProgress(updatedProgress)
+      }
+    })
+
+    return () => unsubscribe()
   }, [user])
 
   async function loadProgress() {

@@ -10,6 +10,7 @@ export interface LeaderboardUser {
   activeTitle?: string
   weeklyXP: number
   monthlyXP: number
+  isPremium?: boolean
 }
 
 export async function getLeaderboard(
@@ -47,6 +48,7 @@ export async function getLeaderboard(
         activeTitle: data.activeTitle,
         weeklyXP: data.weeklyXP || 0,
         monthlyXP: data.monthlyXP || 0,
+        isPremium: data.isPremium || false,
       })
     }
     
@@ -108,6 +110,7 @@ export function subscribeToLeaderboard(
         activeTitle: data.activeTitle,
         weeklyXP: data.weeklyXP || 0,
         monthlyXP: data.monthlyXP || 0,
+        isPremium: data.isPremium || false,
       })
     })
     

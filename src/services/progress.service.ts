@@ -514,3 +514,85 @@ export function isPremiumActive(progress: UserProgress | null): boolean {
   
   return expirationDate > new Date()
 }
+
+// Admin functions
+export async function setUserXP(userId: string, amount: number): Promise<boolean> {
+  try {
+    const progressRef = doc(db, 'userProgress', userId)
+    const newLevel = getLevelFromXP(amount)
+    
+    await updateDoc(progressRef, {
+      xp: amount,
+      level: newLevel,
+      updatedAt: new Date(),
+    })
+    
+    return true
+  } catch (error) {
+    console.error('Erro ao definir XP:', error)
+    return false
+  }
+}
+
+export async function setUserCoins(userId: string, amount: number): Promise<boolean> {
+  try {
+    const progressRef = doc(db, 'userProgress', userId)
+    
+    await updateDoc(progressRef, {
+      coins: amount,
+      updatedAt: new Date(),
+    })
+    
+    return true
+  } catch (error) {
+    console.error('Erro ao definir moedas:', error)
+    return false
+  }
+}
+
+export async function setUserLevel(userId: string, level: number): Promise<boolean> {
+  try {
+    const progressRef = doc(db, 'userProgress', userId)
+    const xpForLevel = getXPForLevel(level)
+    
+    await updateDoc(progressRef, {
+      level: level,
+      xp: xpForLevel,
+      updatedAt: new Date(),
+    })
+    
+    return true
+  } catch (error) {
+    console.error('Erro ao definir nível:', error)
+    return false
+  }
+}
+
+export async function resetUserProgress(userId: string): Promise<boolean> {
+  try {
+    const progressRef = doc(db, 'userProgress', userId)
+    const progressDoc = await getDoc(progressRef)
+    
+    if (!progressDoc.exists()) return false
+    
+    const currentData = progressDoc.data()
+    
+    await updateDoc(progressRef, {
+      xp: 0,
+      level: 1,
+      coins: 0,
+      achievements: [],
+      unlockedTitles: [],
+      activeTitle: null,
+      weeklyXP: 0,
+      monthlyXP: 0,
+      isPremium: currentData.isPremium || false, // Keep premium status
+      updatedAt: new Date(),
+    })
+    
+    return true
+  } catch (error) {
+    console.error('Erro ao resetar progresso:', error)
+    return false
+  }
+}

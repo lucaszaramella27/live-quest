@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { useLocation } from 'react-router-dom'
 import { Sidebar } from './Sidebar'
-import { getUserProgress, createUserProgress, type UserProgress } from '@/services/progress.service'
+import { getUserProgress, createUserProgress, subscribeToUserProgress, type UserProgress } from '@/services/progress.service'
 import { Menu } from 'lucide-react'
 
 interface DashboardLayoutProps {
@@ -16,12 +16,22 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
 
   useEffect(() => {
-    if (user) {
-      loadProgress()
-    }
+    if (!user) return
+
+    // First, try to load or create progress
+    loadInitialProgress()
+
+    // Then subscribe to real-time updates
+    const unsubscribe = subscribeToUserProgress(user.id, (updatedProgress) => {
+      if (updatedProgress) {
+        setProgress(updatedProgress)
+      }
+    })
+
+    return () => unsubscribe()
   }, [user])
 
-  async function loadProgress() {
+  async function loadInitialProgress() {
     if (!user) return
 
     try {

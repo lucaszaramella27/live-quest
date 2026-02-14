@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { GradientCard, Toast } from '@/shared/ui'
-import { Trophy, Medal, Award, Users } from 'lucide-react'
+import { Trophy, Medal, Award, Users, Crown } from 'lucide-react'
 import { TitleBadge } from '@/shared/ui/TitleBadge'
 import { getTitleById } from '@/services/titles.service'
 import { subscribeToLeaderboard, type LeaderboardUser } from '@/services/leaderboard.service'
@@ -138,7 +138,12 @@ export function LeaderboardPage() {
                 <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gray-400/20 to-gray-500/20 mx-auto mb-3 flex items-center justify-center text-3xl">
                   {leaderboard[1].name[0]}
                 </div>
-                <h3 className="font-bold mb-1">{leaderboard[1].name}</h3>
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <h3 className="font-bold">{leaderboard[1].name}</h3>
+                  {leaderboard[1].isPremium && (
+                    <Crown className="w-4 h-4 text-yellow-500" />
+                  )}
+                </div>
                 <p className="text-sm text-gray-400 mb-2">Nível {leaderboard[1].level}</p>
                 {leaderboard[1].activeTitle && getTitleById(leaderboard[1].activeTitle) && (
                   <TitleBadge title={getTitleById(leaderboard[1].activeTitle)!} size="sm" className="mb-2" />
@@ -156,7 +161,12 @@ export function LeaderboardPage() {
                 <div className="w-24 h-24 rounded-full bg-gradient-to-br from-yellow-500/20 to-orange-500/20 mx-auto mb-3 flex items-center justify-center text-4xl border-4 border-yellow-500/40">
                   {leaderboard[0].name[0]}
                 </div>
-                <h3 className="font-bold text-xl mb-1">{leaderboard[0].name}</h3>
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <h3 className="font-bold text-xl">{leaderboard[0].name}</h3>
+                  {leaderboard[0].isPremium && (
+                    <Crown className="w-5 h-5 text-yellow-500 animate-pulse" />
+                  )}
+                </div>
                 <p className="text-sm text-gray-400 mb-2">Nível {leaderboard[0].level}</p>
                 {leaderboard[0].activeTitle && getTitleById(leaderboard[0].activeTitle) && (
                   <TitleBadge title={getTitleById(leaderboard[0].activeTitle)!} size="md" className="mb-2" />
@@ -174,7 +184,12 @@ export function LeaderboardPage() {
                 <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-600/20 to-amber-700/20 mx-auto mb-3 flex items-center justify-center text-3xl">
                   {leaderboard[2].name[0]}
                 </div>
-                <h3 className="font-bold mb-1">{leaderboard[2].name}</h3>
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <h3 className="font-bold">{leaderboard[2].name}</h3>
+                  {leaderboard[2].isPremium && (
+                    <Crown className="w-4 h-4 text-yellow-500" />
+                  )}
+                </div>
                 <p className="text-sm text-gray-400 mb-2">Nível {leaderboard[2].level}</p>
                 {leaderboard[2].activeTitle && getTitleById(leaderboard[2].activeTitle) && (
                   <TitleBadge title={getTitleById(leaderboard[2].activeTitle)!} size="sm" className="mb-2" />
@@ -209,6 +224,9 @@ export function LeaderboardPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <h3 className="font-bold">{user.name}</h3>
+                        {user.isPremium && (
+                          <Crown className="w-4 h-4 text-yellow-500" />
+                        )}
                         {user.activeTitle && getTitleById(user.activeTitle) && (
                           <TitleBadge title={getTitleById(user.activeTitle)!} size="sm" />
                         )}
