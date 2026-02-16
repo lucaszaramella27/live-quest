@@ -12,21 +12,27 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in">
-      {/* Backdrop */}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+      data-no-reveal
+    >
       <div 
-        className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-[#040913]/82"
         onClick={onClose}
       />
       
-      {/* Modal */}
-      <div className="relative w-full max-w-md rounded-2xl border p-6 animate-scale-in surface-card">
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold" style={{ color: 'var(--color-text)' }}>{title}</h2>
+      <div className="surface-card relative w-full max-w-md overflow-hidden rounded-2xl border p-6 animate-scale-in" data-no-reveal>
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px" style={{ background: 'var(--gradient-primary)' }} />
+
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <h2 className="text-xl font-bold sm:text-2xl" style={{ color: 'var(--color-text)' }}>{title}</h2>
           <button
             onClick={onClose}
-            className="rounded-lg p-2 transition-colors hover:bg-slate-900/70"
+            className="rounded-lg border p-2 transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-900/60"
             style={{ color: 'var(--color-text-secondary)' }}
+            aria-label="Fechar modal"
           >
             <X className="w-5 h-5" />
           </button>

@@ -1,4 +1,5 @@
 import { backendClient } from './backend-client'
+import { getRewardPowerupModifiers } from './inventory.service'
 import { reportError } from './logger.service'
 import { addCoins, addXP, checkAchievements, getUserStats, type Achievement } from './progress.service'
 import { recordDailyActivity } from './activity.service'
@@ -133,6 +134,13 @@ async function getTodayRewardCount(userId: string, sourceType: 'task' | 'goal' |
   return Number(data?.[counterField] ?? 0)
 }
 
+function applyMultiplier(baseValue: number, multiplier: number): number {
+  if (!Number.isFinite(baseValue) || baseValue <= 0) return 0
+
+  const safeMultiplier = Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1
+  return Math.max(0, Math.round(baseValue * safeMultiplier))
+}
+
 export async function applyDocumentReward(params: {
   userId: string
   sourceType: 'task' | 'goal' | 'event'
@@ -153,10 +161,17 @@ export async function applyDocumentReward(params: {
     }
   }
 
-  const dailyCount = await getTodayRewardCount(params.userId, params.sourceType)
+  const [dailyCount, modifiers] = await Promise.all([
+    getTodayRewardCount(params.userId, params.sourceType),
+    getRewardPowerupModifiers(params.userId),
+  ])
+
   if (dailyCount >= params.rule.maxPerDay) {
     return { awarded: false, reason: 'daily_limit_reached', achievements: [] }
   }
+
+  const awardedXP = applyMultiplier(params.rule.xp, modifiers.xpMultiplier)
+  const awardedCoins = applyMultiplier(params.rule.coins, modifiers.coinMultiplier)
 
   const ledgerId = `${params.userId}:${params.sourceType}:${params.sourceId}`
   const nowIso = new Date().toISOString()
@@ -166,8 +181,8 @@ export async function applyDocumentReward(params: {
     user_id: params.userId,
     source_type: params.sourceType,
     source_id: params.sourceId,
-    xp: params.rule.xp,
-    coins: params.rule.coins,
+    xp: awardedXP,
+    coins: awardedCoins,
     created_at: nowIso,
   })
 
@@ -179,10 +194,10 @@ export async function applyDocumentReward(params: {
   }
 
   try {
-    await addXP(params.userId, params.rule.xp)
-    await addCoins(params.userId, params.rule.coins)
-    await upsertRewardDaily(params.userId, params.sourceType, params.rule.xp, params.rule.coins)
-    await recordDailyActivity(params.userId, params.sourceType, params.rule.xp, params.rule.coins)
+    await addXP(params.userId, awardedXP)
+    await addCoins(params.userId, awardedCoins)
+    await upsertRewardDaily(params.userId, params.sourceType, awardedXP, awardedCoins)
+    await recordDailyActivity(params.userId, params.sourceType, awardedXP, awardedCoins)
 
     if (params.markRewarded) {
       await params.markRewarded()

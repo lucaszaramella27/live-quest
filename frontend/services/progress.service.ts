@@ -65,6 +65,46 @@ const FALLBACK_ADMIN_UIDS = (import.meta.env.VITE_ADMIN_UIDS || '')
   .filter(Boolean)
 
 const DEFAULT_TITLE_ID = 'novice'
+const progressSubscribers = new Map<string, Set<(progress: UserProgress | null) => void>>()
+
+function notifyProgressSubscribers(userId: string, progress: UserProgress | null): void {
+  const listeners = progressSubscribers.get(userId)
+  if (!listeners || listeners.size === 0) return
+
+  listeners.forEach((listener) => {
+    try {
+      listener(progress)
+    } catch (error) {
+      reportError('progress_subscriber_callback_failed', error, { userId })
+    }
+  })
+}
+
+function registerProgressSubscriber(
+  userId: string,
+  callback: (progress: UserProgress | null) => void
+): void {
+  const listeners = progressSubscribers.get(userId)
+  if (listeners) {
+    listeners.add(callback)
+    return
+  }
+
+  progressSubscribers.set(userId, new Set([callback]))
+}
+
+function unregisterProgressSubscriber(
+  userId: string,
+  callback: (progress: UserProgress | null) => void
+): void {
+  const listeners = progressSubscribers.get(userId)
+  if (!listeners) return
+
+  listeners.delete(callback)
+  if (listeners.size === 0) {
+    progressSubscribers.delete(userId)
+  }
+}
 
 function mapProgressRow(row: UserProgressRow): UserProgress {
   return {
@@ -133,7 +173,9 @@ async function upsertProgress(progress: UserProgress): Promise<UserProgress> {
     throw error
   }
 
-  return mapProgressRow(data)
+  const mapped = mapProgressRow(data)
+  notifyProgressSubscribers(mapped.userId, mapped)
+  return mapped
 }
 
 async function hasAdminAccess(): Promise<boolean> {
@@ -332,6 +374,16 @@ export async function getUserProgress(userId: string): Promise<UserProgress | nu
   return row ? mapProgressRow(row) : null
 }
 
+export function publishUserProgressSnapshot(progress: UserProgress): void {
+  notifyProgressSubscribers(progress.userId, progress)
+}
+
+export async function refreshUserProgressSubscriptions(userId: string): Promise<UserProgress | null> {
+  const progress = await getUserProgress(userId)
+  notifyProgressSubscribers(userId, progress)
+  return progress
+}
+
 /**
  * Listener em tempo real para o progresso do usuário
  * Atualiza automaticamente quando XP, nível, coins ou achievements mudarem
@@ -340,6 +392,8 @@ export function subscribeToUserProgress(
   userId: string,
   callback: (progress: UserProgress | null) => void
 ): () => void {
+  registerProgressSubscriber(userId, callback)
+
   const channelName = `user_progress:${userId}:${Math.random().toString(36).slice(2)}`
   const channel: RealtimeChannel = backendClient
     .channel(channelName)
@@ -353,36 +407,35 @@ export function subscribeToUserProgress(
       },
       (payload) => {
         if (payload.eventType === 'DELETE') {
-          callback(null)
+          notifyProgressSubscribers(userId, null)
           return
         }
 
         const next = payload.new as UserProgressRow | undefined
         if (!next) {
-          void getUserProgress(userId)
-            .then((progress) => callback(progress))
+          void refreshUserProgressSubscriptions(userId)
             .catch((error) => {
               reportError('Erro no listener do progresso:', error)
-              callback(null)
+              notifyProgressSubscribers(userId, null)
             })
           return
         }
 
-        callback(mapProgressRow(next))
+        notifyProgressSubscribers(userId, mapProgressRow(next))
       }
     )
     .subscribe((status) => {
       if (status === 'SUBSCRIBED') {
-        void getUserProgress(userId)
-          .then((progress) => callback(progress))
+        void refreshUserProgressSubscriptions(userId)
           .catch((error) => {
             reportError('Erro no listener do progresso:', error)
-            callback(null)
+            notifyProgressSubscribers(userId, null)
           })
       }
     })
 
   return () => {
+    unregisterProgressSubscriber(userId, callback)
     void backendClient.removeChannel(channel)
   }
 }

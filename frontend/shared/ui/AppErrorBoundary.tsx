@@ -42,10 +42,11 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
             </p>
             <button
               onClick={this.handleReload}
-              className="px-5 py-2.5 rounded-lg font-medium"
+              className="px-5 py-2.5 rounded-lg border font-semibold"
               style={{
                 background: 'var(--gradient-primary)',
-                color: 'white',
+                borderColor: 'rgba(94, 247, 226, 0.35)',
+                color: '#04131f',
               }}
             >
               Recarregar

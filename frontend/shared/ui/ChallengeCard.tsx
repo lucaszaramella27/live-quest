@@ -34,7 +34,7 @@ export function ChallengeCard({ challenge, compact = false, onClaim, claiming = 
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-900/80">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-950/70">
                 <div className="h-full rounded-full transition-all duration-500" style={{ width: `${clampedProgress}%`, background: 'var(--gradient-primary)' }} />
               </div>
               <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
@@ -88,7 +88,7 @@ export function ChallengeCard({ challenge, compact = false, onClaim, claiming = 
           </span>
         </div>
 
-        <div className="h-3 overflow-hidden rounded-full bg-slate-900/85">
+        <div className="h-3 overflow-hidden rounded-full bg-slate-950/70">
           <div className="relative h-full rounded-full transition-all duration-500" style={{ width: `${clampedProgress}%`, background: 'var(--gradient-primary)' }}>
             <div className="absolute inset-0 animate-shimmer bg-white/15" style={{ backgroundSize: '200% 100%' }} />
           </div>
@@ -101,7 +101,7 @@ export function ChallengeCard({ challenge, compact = false, onClaim, claiming = 
         </div>
       </div>
 
-      <div className="flex items-center justify-between border-t border-white/10 pt-3">
+      <div className="flex items-center justify-between border-t pt-3" style={{ borderColor: 'rgba(139, 161, 203, 0.2)' }}>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 text-sm">
             <Zap className="h-4 w-4 text-amber-400" />

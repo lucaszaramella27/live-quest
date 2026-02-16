@@ -1,28 +1,56 @@
-﻿import { useState, useEffect } from 'react'
+import { useEffect, useState, type ElementType } from 'react'
 import { useAuth } from '@/features/auth/context/AuthContext'
-import { GradientCard, Button, Toast, IconMapper } from '@/shared/ui'
-import { ShoppingBag, Coins, Sparkles, Lock, Crown, Check, ShoppingCart } from 'lucide-react'
-import { getUserProgress, subscribeToUserProgress, type UserProgress } from '@/services/progress.service'
+import { Button, GradientCard, IconMapper, Modal, Toast } from '@/shared/ui'
+import {
+  BadgeCheck,
+  Check,
+  Coins,
+  Crown,
+  LayoutGrid,
+  Lock,
+  Package,
+  ShoppingBag,
+  ShoppingCart,
+  Sparkles,
+  Zap,
+} from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { getUserInventory, purchaseShopItem, type ActivePowerup } from '@/services/inventory.service'
+import { subscribeToUserProgress, type UserProgress } from '@/services/progress.service'
 import {
   SHOP_ITEMS,
   canPurchaseItem,
-  getRarityColor,
-  getRarityGradient,
   getCategoryIcon,
   getCategoryName,
+  getRarityColor,
+  getRarityGradient,
   type ShopItem,
 } from '@/services/shop.service'
 import { reportError } from '@/services/logger.service'
 
+interface CategoryFilter {
+  id: ShopItem['category'] | 'all'
+  name: string
+  icon: ElementType
+}
+
+const categories: CategoryFilter[] = [
+  { id: 'all', name: 'Todos', icon: LayoutGrid },
+  { id: 'powerup', name: 'Power-ups', icon: Zap },
+  { id: 'avatar', name: 'Avatares', icon: Sparkles },
+  { id: 'badge', name: 'Badges', icon: BadgeCheck },
+]
+
 export function ShopPage() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [progress, setProgress] = useState<UserProgress | null>(null)
   const [loading, setLoading] = useState(true)
   const [processingPurchase, setProcessingPurchase] = useState<string | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<ShopItem['category'] | 'all'>('all')
   const [purchasedItems, setPurchasedItems] = useState<string[]>([])
   const [activePowerups, setActivePowerups] = useState<ActivePowerup[]>([])
+  const [pendingPurchaseItem, setPendingPurchaseItem] = useState<ShopItem | null>(null)
   const [toastMessage, setToastMessage] = useState('')
   const [toastType, setToastType] = useState<'success' | 'streak' | 'goal' | 'task' | 'achievement' | 'error'>('success')
   const [showToast, setShowToast] = useState(false)
@@ -48,16 +76,12 @@ export function ShopPage() {
 
     try {
       setLoading(true)
-      const [progressData, inventoryData] = await Promise.all([
-        getUserProgress(user.id),
-        getUserInventory(),
-      ])
-      setProgress(progressData)
-      setPurchasedItems(inventoryData.purchasedItemIds)
-      setActivePowerups(inventoryData.activePowerups)
+      const inventory = await getUserInventory()
+      setPurchasedItems(inventory.purchasedItemIds)
+      setActivePowerups(inventory.activePowerups)
     } catch (error) {
-      reportError('Erro ao carregar loja:', error)
-      setToastMessage('Erro ao carregar dados da loja')
+      reportError('shop_load_data', error, { userId: user.id })
+      setToastMessage('Nao foi possivel carregar os dados da loja.')
       setToastType('error')
       setShowToast(true)
     } finally {
@@ -69,10 +93,9 @@ export function ShopPage() {
     if (!progress) return
 
     const { canPurchase, reason } = canPurchaseItem(item, progress.coins, isPremium)
-
     if (!canPurchase) {
-      setToastMessage(reason || 'Nao e possivel comprar este item')
-      setToastType('achievement')
+      setToastMessage(reason || 'Compra indisponivel no momento.')
+      setToastType('error')
       setShowToast(true)
       return
     }
@@ -83,11 +106,13 @@ export function ShopPage() {
 
       if (!result.success) {
         if (result.reason === 'coins_insufficient') {
-          setToastMessage('Compra recusada: saldo insuficiente.')
+          setToastMessage('Saldo insuficiente para este item.')
+        } else if (result.reason === 'premium_required') {
+          setToastMessage('Item exclusivo para usuarios Premium.')
         } else if (result.reason === 'backend_unavailable') {
-          setToastMessage('Compra indisponivel no ambiente local sem backend de funcoes ativo.')
+          setToastMessage('Compra indisponivel no ambiente local sem backend ativo.')
         } else {
-          setToastMessage('Compra recusada: item indisponivel no momento.')
+          setToastMessage('Item indisponivel no momento.')
         }
         setToastType('error')
         setShowToast(true)
@@ -96,14 +121,23 @@ export function ShopPage() {
 
       setPurchasedItems(result.purchasedItemIds)
       setActivePowerups(result.activePowerups)
-      setProgress((current) => (current ? { ...current, coins: result.newBalance } : current))
+      setProgress((current) =>
+        current
+          ? {
+              ...current,
+              coins: result.newBalance,
+              xp: result.newXP,
+              level: result.newLevel,
+            }
+          : current
+      )
 
       setToastMessage(`Item comprado com sucesso: ${item.name}`)
       setToastType('success')
       setShowToast(true)
     } catch (error) {
-      reportError('Erro ao comprar item:', error)
-      setToastMessage('Erro ao processar compra')
+      reportError('shop_purchase_item', error, { itemId: item.id })
+      setToastMessage('Erro ao processar compra.')
       setToastType('error')
       setShowToast(true)
     } finally {
@@ -111,12 +145,32 @@ export function ShopPage() {
     }
   }
 
-  const categories: Array<{ id: ShopItem['category'] | 'all'; name: string; icon: string }> = [
-    { id: 'all', name: 'Todos', icon: 'Loja' },
-    { id: 'powerup', name: 'Power-ups', icon: 'XP' },
-    { id: 'avatar', name: 'Avatares', icon: 'Avatar' },
-    { id: 'badge', name: 'Badges', icon: 'Badge' },
-  ]
+  function handleOpenPurchaseConfirmation(item: ShopItem) {
+    if (!progress) return
+
+    const { canPurchase, reason } = canPurchaseItem(item, progress.coins, isPremium)
+    if (!canPurchase) {
+      setToastMessage(reason || 'Compra indisponivel no momento.')
+      setToastType('error')
+      setShowToast(true)
+      return
+    }
+
+    setPendingPurchaseItem(item)
+  }
+
+  function handleClosePurchaseConfirmation() {
+    if (processingPurchase) return
+    setPendingPurchaseItem(null)
+  }
+
+  function handleConfirmPurchase() {
+    if (!pendingPurchaseItem) return
+
+    const item = pendingPurchaseItem
+    setPendingPurchaseItem(null)
+    void handlePurchase(item)
+  }
 
   const filteredItems = selectedCategory === 'all'
     ? SHOP_ITEMS
@@ -124,186 +178,258 @@ export function ShopPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex min-h-[55vh] items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-brand-purple/20 border-t-brand-purple rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Carregando loja...</p>
+          <div className="mx-auto mb-4 h-14 w-14 animate-spin rounded-full border-4 border-cyan-200/20 border-t-cyan-200" />
+          <p style={{ color: 'var(--color-text-secondary)' }}>Carregando loja...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div>
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <ShoppingBag className="w-8 h-8 text-brand-purple" />
-              <h1 className="text-3xl font-bold">Loja</h1>
+    <div className="mx-auto w-full max-w-7xl space-y-8">
+      <header className="surface-card relative overflow-hidden rounded-3xl p-6 sm:p-8">
+        <div className="pointer-events-none absolute inset-0 opacity-90" style={{ background: 'var(--gradient-overlay)' }} />
+        <div className="relative flex flex-wrap items-start justify-between gap-6">
+          <div className="max-w-2xl">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ borderColor: 'rgba(94, 247, 226, 0.28)', color: '#bbfff8' }}>
+              <Sparkles className="h-4 w-4" />
+              Store
             </div>
-            <p className="text-gray-400 mt-2">Compre power-ups, avatares e itens exclusivos</p>
+
+            <div className="flex items-center gap-3">
+              <ShoppingBag className="h-8 w-8" style={{ color: 'var(--color-primary)' }} />
+              <h1 className="text-3xl font-bold sm:text-4xl">Loja</h1>
+            </div>
+            <p className="mt-3 text-sm sm:text-base" style={{ color: 'var(--color-text-secondary)' }}>
+              Compre power-ups, badges e itens visuais para acelerar sua evolucao.
+            </p>
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500/10 to-yellow-500/10 border border-amber-500/20 rounded-xl">
-            <Coins className="w-5 h-5 text-amber-500" />
-            <span className="font-bold text-amber-500">{progress?.coins || 0}</span>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<Package className="h-4 w-4" />}
+              onClick={() => navigate('/inventory')}
+            >
+              Inventario
+            </Button>
+            <div
+              className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5"
+              style={{
+                background: 'linear-gradient(140deg, rgba(251, 191, 36, 0.18), rgba(245, 158, 11, 0.1))',
+                borderColor: 'rgba(245, 158, 11, 0.35)',
+              }}
+            >
+              <Coins className="h-5 w-5 text-amber-300" />
+              <span className="text-sm font-bold text-amber-200">{progress?.coins || 0}</span>
+            </div>
+
+            {isPremium ? (
+              <div className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5" style={{ borderColor: 'rgba(245, 158, 11, 0.35)', background: 'rgba(251, 191, 36, 0.15)', color: '#fde68a' }}>
+                <Crown className="h-4 w-4" />
+                Premium
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-2 rounded-xl border px-4 py-2.5" style={{ borderColor: 'rgba(139, 161, 203, 0.26)', color: 'var(--color-text-secondary)' }}>
+                <Lock className="h-4 w-4" />
+                Plano Free
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      </header>
 
       {activePowerups.length > 0 && (
-        <div className="mb-8 p-4 rounded-xl border border-brand-purple/20 bg-brand-purple/5">
-          <p className="text-sm text-brand-purple font-semibold mb-2">Power-ups ativos</p>
+        <section className="glass rounded-2xl border p-4 sm:p-5">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: '#a9fff5' }}>
+            Power-ups ativos
+          </p>
           <div className="flex flex-wrap gap-2">
             {activePowerups.map((powerup) => (
-              <span key={`${powerup.itemId}_${powerup.activatedAt}`} className="text-xs px-2 py-1 rounded-lg bg-white/10">
+              <span
+                key={`${powerup.itemId}_${powerup.activatedAt}`}
+                className="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-semibold"
+                style={{
+                  borderColor: 'rgba(87, 215, 255, 0.3)',
+                  background: 'rgba(5, 15, 28, 0.8)',
+                  color: 'var(--color-text)',
+                }}
+              >
+                <Zap className="h-3.5 w-3.5 text-cyan-200" />
                 {powerup.itemId}
               </span>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      <div className="space-y-8">
-        <div className="flex gap-2 mb-8 overflow-x-auto pb-2">
-          {categories.map((category) => (
+      <section className="flex gap-2 overflow-x-auto pb-2">
+        {categories.map((category) => {
+          const Icon = category.icon
+          const isSelected = selectedCategory === category.id
+          return (
             <button
               key={category.id}
               onClick={() => setSelectedCategory(category.id)}
-              className={`
-                px-6 py-3 rounded-xl font-semibold whitespace-nowrap transition-all duration-300
-                ${selectedCategory === category.id
-                  ? 'bg-gradient-to-r from-brand-purple to-brand-pink text-white scale-105'
-                  : 'bg-white/5 text-gray-400 hover:bg-white/10'
-                }
-              `}
+              className="inline-flex items-center gap-2 whitespace-nowrap rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all duration-200"
+              style={{
+                background: isSelected ? 'var(--gradient-primary)' : 'rgba(8, 17, 33, 0.75)',
+                color: isSelected ? '#031320' : 'var(--color-text-secondary)',
+                borderColor: isSelected ? 'rgba(94, 247, 226, 0.45)' : 'rgba(139, 161, 203, 0.22)',
+                transform: isSelected ? 'translateY(-1px)' : 'none',
+              }}
             >
-              <span className="mr-2">{category.icon}</span>
+              <Icon className="h-4 w-4" />
               {category.name}
             </button>
-          ))}
-        </div>
+          )
+        })}
+      </section>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredItems.map((item) => {
-            const { canPurchase, reason } = canPurchaseItem(item, progress?.coins || 0, isPremium)
-            const isPurchased = purchasedItems.includes(item.id) && item.category !== 'powerup'
+      <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+        {filteredItems.map((item) => {
+          const { canPurchase, reason } = canPurchaseItem(item, progress?.coins || 0, isPremium)
+          const isPurchased = purchasedItems.includes(item.id) && item.category !== 'powerup'
 
-            return (
-              <GradientCard
-                key={item.id}
-                hover
-                className="relative overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(168,85,247,0.4)] hover:rotate-1"
-              >
-                <div className={`p-6 rounded-xl bg-gradient-to-br ${getRarityGradient(item.rarity)} transition-all duration-300`}>
-                  {item.isPremiumOnly && (
-                    <div className="absolute top-3 right-3">
-                      <div className="px-2 py-1 bg-yellow-500/20 border border-yellow-500/40 rounded-lg flex items-center gap-1">
-                        <Crown className="w-3 h-3 text-yellow-500" />
-                        <span className="text-xs font-bold text-yellow-500">Premium</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {item.isLimited && (
-                    <div className="absolute top-3 left-3">
-                      <div className="px-2 py-1 bg-red-500/20 border border-red-500/40 rounded-lg">
-                        <span className="text-xs font-bold text-red-500">LIMITADO</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex justify-center items-center mb-4">
-                    <IconMapper icon={item.icon} size={64} />
+          return (
+            <GradientCard key={item.id} hover className="relative overflow-hidden p-0">
+              <div className={`h-full rounded-2xl bg-gradient-to-br p-5 ${getRarityGradient(item.rarity)}`}>
+                <div className="mb-5 flex items-start justify-between gap-4">
+                  <div className="inline-flex items-center gap-2 rounded-lg border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ borderColor: 'rgba(139, 161, 203, 0.24)', color: getRarityColor(item.rarity), background: 'rgba(4, 13, 25, 0.58)' }}>
+                    {item.rarity}
                   </div>
 
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-lg font-bold" style={{ color: getRarityColor(item.rarity) }}>
-                        {item.name}
-                      </h3>
-                      <span className="text-xs uppercase tracking-wider" style={{ color: getRarityColor(item.rarity) }}>
-                        {item.rarity}
+                  <div className="flex items-center gap-2">
+                    {item.isPremiumOnly && (
+                      <span className="inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-[11px] font-bold" style={{ borderColor: 'rgba(245, 158, 11, 0.42)', color: '#fcd34d', background: 'rgba(120, 53, 15, 0.35)' }}>
+                        <Crown className="h-3 w-3" />
+                        Premium
                       </span>
-                    </div>
-                    <p className="text-sm text-gray-300 mb-3">{item.description}</p>
-
-                    <div className="inline-flex items-center gap-1 px-2 py-1 bg-white/10 rounded-lg text-xs">
-                      <IconMapper icon={getCategoryIcon(item.category)} size={16} />
-                      <span>{getCategoryName(item.category)}</span>
-                    </div>
+                    )}
+                    {item.isLimited && (
+                      <span className="inline-flex items-center rounded-lg border px-2 py-1 text-[11px] font-bold" style={{ borderColor: 'rgba(248, 113, 113, 0.4)', color: '#fda4af', background: 'rgba(127, 29, 29, 0.32)' }}>
+                        Limitado
+                      </span>
+                    )}
                   </div>
+                </div>
 
-                  <div className="flex items-center justify-between pt-3 border-t border-white/10">
-                    <div className="flex items-center gap-2">
-                      <Coins className="w-5 h-5 text-amber-500" />
-                      <span className="text-xl font-bold text-amber-500">{item.price}</span>
+                <div className="mb-4 flex justify-center">
+                  <div className="glass flex h-20 w-20 items-center justify-center rounded-2xl border">
+                    <IconMapper icon={item.icon} size={56} />
+                  </div>
+                </div>
+
+                <h3 className="text-xl font-bold" style={{ color: getRarityColor(item.rarity) }}>
+                  {item.name}
+                </h3>
+                <p className="mt-2 min-h-[44px] text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                  {item.description}
+                </p>
+
+                <div className="mt-4 inline-flex items-center gap-2 rounded-lg border px-2.5 py-1 text-xs" style={{ borderColor: 'rgba(139, 161, 203, 0.24)', color: 'var(--color-text-secondary)' }}>
+                  <IconMapper icon={getCategoryIcon(item.category)} size={14} />
+                  {getCategoryName(item.category)}
+                </div>
+
+                <div className="mt-5 border-t pt-4" style={{ borderColor: 'rgba(139, 161, 203, 0.2)' }}>
+                  <div className="mb-4 flex items-center justify-between">
+                    <div className="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5" style={{ borderColor: 'rgba(245, 158, 11, 0.4)', background: 'rgba(120, 53, 15, 0.28)' }}>
+                      <Coins className="h-4 w-4 text-amber-300" />
+                      <span className="font-bold text-amber-200">{item.price}</span>
                     </div>
 
                     {isPurchased ? (
-                      <div className="flex items-center gap-2 text-green-500">
-                        <Check className="w-5 h-5" />
-                        <span className="text-sm font-bold">Comprado</span>
+                      <div className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-300">
+                        <Check className="h-4 w-4" />
+                        Comprado
                       </div>
                     ) : canPurchase ? (
                       <Button
-                        onClick={() => void handlePurchase(item)}
+                        onClick={() => handleOpenPurchaseConfirmation(item)}
                         disabled={processingPurchase === item.id}
                         variant="primary"
                         size="sm"
-                        icon={<ShoppingCart className="w-4 h-4" />}
+                        icon={<ShoppingCart className="h-4 w-4" />}
                       >
                         {processingPurchase === item.id ? 'Comprando...' : 'Comprar'}
                       </Button>
                     ) : (
-                      <div className="flex items-center gap-2 text-gray-500">
-                        <Lock className="w-4 h-4" />
-                        <span className="text-xs">{reason}</span>
+                      <div className="inline-flex items-center gap-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                        <Lock className="h-4 w-4" />
+                        {reason}
                       </div>
                     )}
                   </div>
 
                   {item.effect && (
-                    <div className="mt-3 p-2 bg-black/20 rounded-lg">
-                      <p className="text-xs text-gray-400">
-                        {item.effect.duration
-                          ? `Duracao: ${item.effect.duration}h`
-                          : 'Uso unico'
-                        }
-                      </p>
+                    <div className="rounded-lg border px-3 py-2 text-xs" style={{ borderColor: 'rgba(139, 161, 203, 0.2)', background: 'rgba(5, 13, 24, 0.65)', color: 'var(--color-text-secondary)' }}>
+                      {item.effect.duration ? `Duracao: ${item.effect.duration}h` : 'Uso unico'}
                     </div>
                   )}
 
                   {item.isLimited && item.stock !== undefined && (
-                    <div className="mt-2 text-center">
-                      <p className="text-xs text-red-400">
-                        Estoque limitado no backend
-                      </p>
-                    </div>
+                    <p className="mt-2 text-xs text-rose-300">Estoque limitado no backend</p>
                   )}
                 </div>
-              </GradientCard>
-            )
-          })}
-        </div>
+              </div>
+            </GradientCard>
+          )
+        })}
+      </section>
 
-        {filteredItems.length === 0 && (
-          <div className="text-center py-16">
-            <Sparkles className="w-16 h-16 mx-auto mb-4 text-gray-600" />
-            <p className="text-gray-400">Nenhum item encontrado nesta categoria</p>
+      {filteredItems.length === 0 && (
+        <div className="surface-card rounded-2xl p-12 text-center">
+          <Sparkles className="mx-auto mb-4 h-14 w-14 opacity-60" style={{ color: 'var(--color-text-secondary)' }} />
+          <p style={{ color: 'var(--color-text-secondary)' }}>Nenhum item encontrado nesta categoria.</p>
+        </div>
+      )}
+
+      <Modal
+        isOpen={Boolean(pendingPurchaseItem)}
+        onClose={handleClosePurchaseConfirmation}
+        title="Confirmar compra"
+      >
+        {pendingPurchaseItem && (
+          <div className="space-y-5">
+            <div className="rounded-xl border p-4" style={{ borderColor: 'rgba(139, 161, 203, 0.24)', background: 'rgba(8, 17, 33, 0.68)' }}>
+              <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
+                {pendingPurchaseItem.name}
+              </p>
+              <p className="mt-1 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                {pendingPurchaseItem.description}
+              </p>
+              <div className="mt-3 inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs" style={{ borderColor: 'rgba(245, 158, 11, 0.4)', background: 'rgba(120, 53, 15, 0.28)', color: '#fde68a' }}>
+                <Coins className="h-4 w-4" />
+                <span className="font-semibold">{pendingPurchaseItem.price} moedas</span>
+              </div>
+            </div>
+
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              Tem certeza que deseja comprar este item?
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <Button variant="ghost" onClick={handleClosePurchaseConfirmation} disabled={Boolean(processingPurchase)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleConfirmPurchase}
+                disabled={processingPurchase === pendingPurchaseItem.id}
+                icon={<ShoppingCart className="h-4 w-4" />}
+              >
+                {processingPurchase === pendingPurchaseItem.id ? 'Comprando...' : 'Confirmar compra'}
+              </Button>
+            </div>
           </div>
         )}
-      </div>
+      </Modal>
 
-      <Toast
-        message={toastMessage}
-        type={toastType}
-        show={showToast}
-        onClose={() => setShowToast(false)}
-      />
+      <Toast message={toastMessage} type={toastType} show={showToast} onClose={() => setShowToast(false)} />
     </div>
   )
 }
-
-
-

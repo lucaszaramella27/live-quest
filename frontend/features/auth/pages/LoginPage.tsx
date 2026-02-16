@@ -43,7 +43,7 @@ export function LoginPage() {
   }, [location.state])
 
   const heading = useMemo(
-    () => (mode === 'login' ? 'Volte para sua rotina de crescimento' : 'Crie sua conta e comece forte'),
+    () => (mode === 'login' ? 'Volte para sua rotina de crescimento' : 'Crie sua conta e comece com ritmo'),
     [mode]
   )
 
@@ -109,52 +109,53 @@ export function LoginPage() {
   return (
     <div className="relative min-h-screen overflow-hidden">
       <div className="pointer-events-none absolute inset-0 ambient-grid opacity-[0.06]" />
-      <div className="pointer-events-none absolute -left-24 top-0 h-80 w-80 rounded-full blur-3xl" style={{ background: 'rgba(14, 165, 233, 0.28)' }} />
-      <div className="pointer-events-none absolute -right-24 bottom-0 h-80 w-80 rounded-full blur-3xl" style={{ background: 'rgba(249, 115, 22, 0.2)' }} />
+      <div
+        className="pointer-events-none absolute -left-32 top-0 h-96 w-96 rounded-full blur-3xl"
+        style={{ background: 'rgba(94, 247, 226, 0.24)' }}
+      />
+      <div
+        className="pointer-events-none absolute -right-24 bottom-0 h-96 w-96 rounded-full blur-3xl"
+        style={{ background: 'rgba(143, 161, 255, 0.2)' }}
+      />
 
       <div className="relative z-10 min-h-screen">
-        <div className="mx-auto grid min-h-screen w-full max-w-7xl grid-cols-1 px-4 py-6 md:px-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-10">
+        <div className="mx-auto grid min-h-screen w-full max-w-7xl grid-cols-1 px-4 py-6 md:px-8 lg:grid-cols-[1.08fr_0.92fr] lg:gap-12">
           <section className="hidden py-8 lg:flex lg:flex-col lg:justify-between">
             <button
               onClick={() => navigate('/')}
-              className="inline-flex w-fit items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors hover:bg-slate-900/60"
-              style={{ borderColor: 'rgba(148, 163, 184, 0.25)', color: 'var(--color-text-secondary)' }}
+              className="inline-flex w-fit items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-900/55"
+              style={{ borderColor: 'rgba(139, 161, 203, 0.3)', color: 'var(--color-text-secondary)' }}
             >
               <ChevronLeft className="h-4 w-4" />
-              Voltar para a home
+              Voltar para home
             </button>
 
-            <div>
-              <div className="mb-6 flex items-center gap-3">
-                <img src="/logo.png" alt="LiveQuest Logo" className="h-16 w-16 rounded-xl" />
+            <div className="max-w-xl">
+              <div className="mb-7 flex items-center gap-3">
+                <img src="/logo.png" alt="LiveQuest Logo" className="h-14 w-14 rounded-xl" />
                 <div>
                   <p className="text-2xl font-bold text-gradient">LiveQuest</p>
                   <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                    Organize. Execute. Evolua.
+                    Organize. Execute. Cresca.
                   </p>
                 </div>
               </div>
 
-              <h1 className="mb-5 max-w-xl text-4xl font-bold leading-tight">
-                A sua melhor fase como streamer começa com rotina.
+              <h1 className="mb-4 text-4xl font-bold leading-tight">
+                Produto para transformar rotina de criador em sistema de crescimento.
               </h1>
-              <p className="mb-8 max-w-xl text-lg" style={{ color: 'var(--color-text-secondary)' }}>
-                Entre no LiveQuest para transformar objetivos em entregas diarias, com sistema de progresso que realmente
-                te mantém em movimento.
+              <p className="mb-8 text-lg leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                Planeje com clareza, execute com foco e acompanhe sua evolucao diaria em um dashboard unico.
               </p>
 
               <div className="space-y-3">
                 {[
-                  'Metas semanais com acompanhamento visual',
-                  'Checklists diarios com recompensa',
-                  'Evolucao por streak, XP e ranking',
+                  'Dashboard com progresso real em tempo real',
+                  'Missao diaria com checklists e recompensas',
+                  'Gamificacao orientada a consistencia, nao a ruido',
                 ].map((item) => (
-                  <div
-                    key={item}
-                    className="surface-card flex items-center gap-3 rounded-xl px-4 py-3"
-                    style={{ color: 'var(--color-text-secondary)' }}
-                  >
-                    <Sparkles className="h-4 w-4 text-sky-300" />
+                  <div key={item} className="glass flex items-center gap-3 rounded-xl px-4 py-3" style={{ color: 'var(--color-text-secondary)' }}>
+                    <Sparkles className="h-4 w-4 text-cyan-200" />
                     <span className="text-sm">{item}</span>
                   </div>
                 ))}
@@ -162,7 +163,7 @@ export function LoginPage() {
             </div>
 
             <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-              © 2026 LiveQuest. Feito para streamers.
+              (c) 2026 LiveQuest. Built for creators.
             </p>
           </section>
 
@@ -170,7 +171,7 @@ export function LoginPage() {
             <div className="surface-card w-full max-w-md rounded-2xl border p-6 sm:p-8">
               <button
                 onClick={() => navigate('/')}
-                className="mb-4 inline-flex items-center gap-1 text-sm lg:hidden"
+                className="mb-5 inline-flex items-center gap-1 text-sm lg:hidden"
                 style={{ color: 'var(--color-text-secondary)' }}
               >
                 <ChevronLeft className="h-4 w-4" />
@@ -182,14 +183,14 @@ export function LoginPage() {
                 {mode === 'login' ? 'Acesse sua conta para continuar.' : 'Crie sua conta em menos de 1 minuto.'}
               </p>
 
-              <div className="mb-6 grid grid-cols-2 gap-2 rounded-xl p-1" style={{ background: 'rgba(15, 23, 42, 0.8)' }}>
+              <div className="mb-6 grid grid-cols-2 gap-2 rounded-xl p-1.5" style={{ background: 'rgba(7, 16, 30, 0.78)' }}>
                 <button
                   type="button"
                   onClick={() => setMode('login')}
-                  className="rounded-lg px-4 py-2 text-sm font-semibold transition-all"
+                  className="rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-200"
                   style={{
                     background: mode === 'login' ? 'var(--gradient-primary)' : 'transparent',
-                    color: mode === 'login' ? '#04131f' : 'var(--color-text-secondary)',
+                    color: mode === 'login' ? '#031320' : 'var(--color-text-secondary)',
                   }}
                 >
                   Login
@@ -197,10 +198,10 @@ export function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setMode('register')}
-                  className="rounded-lg px-4 py-2 text-sm font-semibold transition-all"
+                  className="rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-200"
                   style={{
                     background: mode === 'register' ? 'var(--gradient-primary)' : 'transparent',
-                    color: mode === 'register' ? '#04131f' : 'var(--color-text-secondary)',
+                    color: mode === 'register' ? '#031320' : 'var(--color-text-secondary)',
                   }}
                 >
                   Cadastro
@@ -210,7 +211,7 @@ export function LoginPage() {
               <form className="space-y-4" onSubmit={handleEmailAuth}>
                 {mode === 'register' && (
                   <label className="block">
-                    <span className="mb-2 block text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+                    <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--color-text-secondary)' }}>
                       Nome
                     </span>
                     <div className="relative">
@@ -220,10 +221,10 @@ export function LoginPage() {
                         value={displayName}
                         onChange={(event) => setDisplayName(event.target.value)}
                         required
-                        className="w-full rounded-xl border py-3 pl-10 pr-4 text-sm focus:border-sky-300/70 focus:outline-none focus:ring-2 focus:ring-sky-400/35"
+                        className="w-full rounded-xl border py-3 pl-10 pr-4 text-sm focus:border-cyan-200/75 focus:outline-none focus:ring-4 focus:ring-cyan-300/15"
                         style={{
-                          background: 'rgba(15, 23, 42, 0.76)',
-                          borderColor: 'rgba(148, 163, 184, 0.24)',
+                          background: 'linear-gradient(145deg, rgba(11, 22, 41, 0.78), rgba(8, 17, 33, 0.82))',
+                          borderColor: 'rgba(139, 161, 203, 0.28)',
                         }}
                         placeholder="Seu nome"
                       />
@@ -232,7 +233,7 @@ export function LoginPage() {
                 )}
 
                 <label className="block">
-                  <span className="mb-2 block text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+                  <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--color-text-secondary)' }}>
                     E-mail
                   </span>
                   <div className="relative">
@@ -242,10 +243,10 @@ export function LoginPage() {
                       value={email}
                       onChange={(event) => setEmail(event.target.value)}
                       required
-                      className="w-full rounded-xl border py-3 pl-10 pr-4 text-sm focus:border-sky-300/70 focus:outline-none focus:ring-2 focus:ring-sky-400/35"
+                      className="w-full rounded-xl border py-3 pl-10 pr-4 text-sm focus:border-cyan-200/75 focus:outline-none focus:ring-4 focus:ring-cyan-300/15"
                       style={{
-                        background: 'rgba(15, 23, 42, 0.76)',
-                        borderColor: 'rgba(148, 163, 184, 0.24)',
+                        background: 'linear-gradient(145deg, rgba(11, 22, 41, 0.78), rgba(8, 17, 33, 0.82))',
+                        borderColor: 'rgba(139, 161, 203, 0.28)',
                       }}
                       placeholder="voce@email.com"
                     />
@@ -253,7 +254,7 @@ export function LoginPage() {
                 </label>
 
                 <label className="block">
-                  <span className="mb-2 block text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+                  <span className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--color-text-secondary)' }}>
                     Senha
                   </span>
                   <div className="relative">
@@ -264,10 +265,10 @@ export function LoginPage() {
                       onChange={(event) => setPassword(event.target.value)}
                       required
                       minLength={6}
-                      className="w-full rounded-xl border py-3 pl-10 pr-4 text-sm focus:border-sky-300/70 focus:outline-none focus:ring-2 focus:ring-sky-400/35"
+                      className="w-full rounded-xl border py-3 pl-10 pr-4 text-sm focus:border-cyan-200/75 focus:outline-none focus:ring-4 focus:ring-cyan-300/15"
                       style={{
-                        background: 'rgba(15, 23, 42, 0.76)',
-                        borderColor: 'rgba(148, 163, 184, 0.24)',
+                        background: 'linear-gradient(145deg, rgba(11, 22, 41, 0.78), rgba(8, 17, 33, 0.82))',
+                        borderColor: 'rgba(139, 161, 203, 0.28)',
                       }}
                       placeholder="Minimo 6 caracteres"
                     />
@@ -286,18 +287,18 @@ export function LoginPage() {
               </form>
 
               <div className="my-6 flex items-center gap-3">
-                <div className="h-px flex-1 bg-slate-700/70" />
-                <span className="text-xs uppercase tracking-wider" style={{ color: 'var(--color-text-secondary)' }}>
+                <div className="h-px flex-1 bg-slate-700/65" />
+                <span className="text-xs uppercase tracking-[0.14em]" style={{ color: 'var(--color-text-secondary)' }}>
                   ou
                 </span>
-                <div className="h-px flex-1 bg-slate-700/70" />
+                <div className="h-px flex-1 bg-slate-700/65" />
               </div>
 
               <button
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={loading}
-                className="flex w-full items-center justify-center gap-3 rounded-xl border px-4 py-3 text-sm font-semibold transition-all hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-3 rounded-xl border px-4 py-3 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
                 style={{
                   background: '#f8fafc',
                   borderColor: '#d1d5db',
@@ -313,8 +314,8 @@ export function LoginPage() {
                 Continuar com Google
               </button>
 
-              <p className="mt-5 text-center text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                Ao continuar, você concorda com nossos <Link to="/terms" className="underline">termos</Link> e <Link to="/privacy" className="underline">politica de privacidade</Link>.
+              <p className="mt-5 text-center text-xs leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                Ao continuar, voce concorda com nossos <Link to="/terms" className="underline">termos</Link> e <Link to="/privacy" className="underline">politica de privacidade</Link>.
               </p>
             </div>
           </section>

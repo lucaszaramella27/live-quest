@@ -67,7 +67,7 @@ export function ThemesPage() {
   const premiumThemes = THEMES.filter((theme) => theme.isPremium)
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto w-full max-w-7xl space-y-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="mb-2 flex items-center gap-3">
@@ -91,8 +91,9 @@ export function ThemesPage() {
         )}
       </header>
 
-      <GradientCard className="rounded-2xl border p-8">
-        <div className="text-center">
+      <GradientCard hover={false} className="relative overflow-hidden rounded-2xl border p-8">
+        <div className="pointer-events-none absolute inset-0 opacity-85" style={{ background: 'var(--gradient-overlay)' }} />
+        <div className="relative text-center">
           <p className="mb-2 text-xs uppercase tracking-[0.18em]" style={{ color: 'var(--color-text-secondary)' }}>
             {hasChanges ? 'Preview' : 'Tema ativo'}
           </p>
@@ -177,15 +178,15 @@ function ThemeCard({ theme, isSelected, isSaved, isLocked, onSelect }: ThemeCard
       type="button"
       onClick={() => onSelect(theme)}
       className={`relative overflow-hidden rounded-2xl border text-left transition-all duration-300 ${
-        isSelected ? 'scale-[1.015] ring-2 ring-sky-300/30' : 'hover:-translate-y-0.5 hover:shadow-xl'
+        isSelected ? 'scale-[1.015] ring-2 ring-cyan-200/30' : 'hover:-translate-y-0.5 hover:shadow-xl'
       } ${isLocked ? 'opacity-75' : ''}`}
       style={{
-        borderColor: isSelected ? 'rgba(125, 211, 252, 0.45)' : 'rgba(148, 163, 184, 0.24)',
+        borderColor: isSelected ? 'rgba(94, 247, 226, 0.45)' : 'rgba(139, 161, 203, 0.24)',
         background: theme.colors.backgroundSecondary,
       }}
     >
       {isLocked && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm">
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#040913]/75 backdrop-blur-sm">
           <div className="rounded-xl border px-4 py-3 text-center" style={{ borderColor: 'rgba(250, 204, 21, 0.4)' }}>
             <Lock className="mx-auto mb-1 h-5 w-5 text-yellow-400" />
             <p className="text-xs font-bold text-yellow-400">Premium</p>
@@ -195,7 +196,7 @@ function ThemeCard({ theme, isSelected, isSaved, isLocked, onSelect }: ThemeCard
 
       {isSelected && (
         <div className="absolute right-3 top-3 z-20 rounded-full p-1" style={{ background: 'var(--gradient-primary)' }}>
-          <Check className="h-4 w-4 text-slate-900" />
+          <Check className="h-4 w-4 text-[#04131f]" />
         </div>
       )}
 

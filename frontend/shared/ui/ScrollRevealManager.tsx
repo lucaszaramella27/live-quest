@@ -9,11 +9,8 @@ function supportsReducedMotion(): boolean {
   return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
-function markVisible(elements: HTMLElement[]): void {
-  elements.forEach((element) => {
-    element.classList.add('reveal')
-    element.classList.add('reveal-visible')
-  })
+function isRevealCandidate(element: Element): element is HTMLElement {
+  return element instanceof HTMLElement && element.matches(REVEAL_SELECTOR) && !element.hasAttribute('data-no-reveal')
 }
 
 export function ScrollRevealManager() {
@@ -22,47 +19,85 @@ export function ScrollRevealManager() {
   useEffect(() => {
     if (typeof window === 'undefined') return
 
-    const elements = Array.from(document.querySelectorAll<HTMLElement>(REVEAL_SELECTOR)).filter(
-      (element) => !element.hasAttribute('data-no-reveal')
-    )
+    const reducedMotion = supportsReducedMotion()
+    const canUseObserver = !reducedMotion && 'IntersectionObserver' in window
+    const preparedElements = new WeakSet<HTMLElement>()
+    let revealIndex = 0
 
-    if (elements.length === 0) return
+    const intersectionObserver = canUseObserver
+      ? new IntersectionObserver(
+          (entries, observerInstance) => {
+            entries.forEach((entry) => {
+              if (!entry.isIntersecting) return
 
-    if (supportsReducedMotion() || !('IntersectionObserver' in window)) {
-      markVisible(elements)
-      return
-    }
+              const element = entry.target as HTMLElement
+              element.classList.add('reveal-visible')
+              observerInstance.unobserve(element)
+            })
+          },
+          {
+            root: null,
+            threshold: 0.14,
+            rootMargin: '0px 0px -10% 0px',
+          }
+        )
+      : null
 
-    const observer = new IntersectionObserver(
-      (entries, observerInstance) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return
+    const prepareElement = (element: HTMLElement) => {
+      if (preparedElements.has(element)) return
+      preparedElements.add(element)
 
-          const element = entry.target as HTMLElement
-          element.classList.add('reveal-visible')
-          observerInstance.unobserve(element)
-        })
-      },
-      {
-        root: null,
-        threshold: 0.14,
-        rootMargin: '0px 0px -10% 0px',
-      }
-    )
-
-    elements.forEach((element, index) => {
       element.classList.add('reveal')
 
       if (!element.style.getPropertyValue('--reveal-delay')) {
-        const delay = Math.min(index * STAGGER_STEP_MS, STAGGER_MAX_MS)
+        const delay = Math.min(revealIndex * STAGGER_STEP_MS, STAGGER_MAX_MS)
         element.style.setProperty('--reveal-delay', `${delay}ms`)
       }
+      revealIndex += 1
 
-      observer.observe(element)
+      if (!canUseObserver) {
+        element.classList.add('reveal-visible')
+        return
+      }
+
+      intersectionObserver?.observe(element)
+    }
+
+    const scanNode = (node: ParentNode) => {
+      if (node instanceof Element && isRevealCandidate(node)) {
+        prepareElement(node)
+      }
+
+      const descendants = Array.from(node.querySelectorAll?.(REVEAL_SELECTOR) || [])
+      descendants.forEach((candidate) => {
+        if (isRevealCandidate(candidate)) {
+          prepareElement(candidate)
+        }
+      })
+    }
+
+    scanNode(document)
+
+    const rafId = window.requestAnimationFrame(() => scanNode(document))
+    const delayedScan = window.setTimeout(() => scanNode(document), 140)
+
+    const mutationObserver = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((addedNode) => {
+          if (addedNode instanceof HTMLElement) {
+            scanNode(addedNode)
+          }
+        })
+      })
     })
 
+    mutationObserver.observe(document.body, { childList: true, subtree: true })
+
     return () => {
-      observer.disconnect()
+      window.cancelAnimationFrame(rafId)
+      window.clearTimeout(delayedScan)
+      mutationObserver.disconnect()
+      intersectionObserver?.disconnect()
     }
   }, [location.pathname])
 

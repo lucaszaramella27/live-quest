@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { CheckCircle, Flame, Target, Zap, Trophy, XCircle } from 'lucide-react'
+import { CheckCircle, Flame, Target, Trophy, X, XCircle, Zap } from 'lucide-react'
 
 interface ToastProps {
   message: string
@@ -64,13 +64,13 @@ export function Toast({ message, type = 'success', show, onClose }: ToastProps) 
   if (!show) return null
 
   return (
-    <div className="fixed right-4 top-24 z-50 w-[min(92vw,380px)] animate-slide-in-right">
+    <div className="fixed right-4 top-24 z-50 w-[min(92vw,390px)] animate-slide-in-right">
       <div
         className="surface-card relative overflow-hidden rounded-2xl border p-4 shadow-2xl backdrop-blur-xl"
         style={{ borderColor: tone.border }}
       >
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px" style={{ background: 'var(--gradient-primary)' }} />
-        <div className="flex items-center gap-3">
+        <div className="flex items-start gap-3">
           <div
             className="flex h-10 w-10 items-center justify-center rounded-xl border"
             style={{
@@ -81,9 +81,23 @@ export function Toast({ message, type = 'success', show, onClose }: ToastProps) 
           >
             <Icon className="h-5 w-5" style={{ color: tone.icon }} />
           </div>
-          <p className="flex-1 text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
-            {message}
-          </p>
+          <div className="min-w-0 flex-1 pt-0.5">
+            <p className="text-sm font-semibold leading-relaxed" style={{ color: 'var(--color-text)' }}>
+              {message}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border p-1.5 transition-all duration-200 hover:bg-slate-900/55"
+            style={{ borderColor: 'rgba(139, 161, 203, 0.24)', color: 'var(--color-text-secondary)' }}
+            aria-label="Fechar aviso"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-slate-900/70">
+          <div className="h-full w-full origin-left animate-[toast-shrink_3s_linear_forwards]" style={{ background: tone.icon }} />
         </div>
       </div>
     </div>

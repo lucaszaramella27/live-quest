@@ -16,8 +16,8 @@ export function XPBar({ xp, level, compact = false }: XPBarProps) {
         <div
           className="flex items-center gap-1 rounded-lg border px-2 py-1"
           style={{
-            background: 'rgba(15, 23, 42, 0.72)',
-            borderColor: 'rgba(125, 211, 252, 0.28)',
+            background: 'rgba(10, 21, 40, 0.78)',
+            borderColor: 'rgba(94, 247, 226, 0.26)',
           }}
         >
           <TrendingUp className="h-3 w-3" style={{ color: 'var(--color-primary)' }} />
@@ -27,7 +27,7 @@ export function XPBar({ xp, level, compact = false }: XPBarProps) {
         </div>
         <div
           className="h-2 w-20 overflow-hidden rounded-full"
-          style={{ background: 'rgba(8, 15, 28, 0.92)' }}
+          style={{ background: 'rgba(5, 12, 23, 0.92)' }}
         >
           <div
             className="h-full rounded-full transition-all duration-500"
@@ -45,8 +45,8 @@ export function XPBar({ xp, level, compact = false }: XPBarProps) {
           <div
             className="flex h-10 w-10 items-center justify-center rounded-xl border text-sm font-bold"
             style={{
-              background: 'linear-gradient(130deg, rgba(34, 211, 238, 0.18), rgba(249, 115, 22, 0.18))',
-              borderColor: 'rgba(125, 211, 252, 0.3)',
+              background: 'linear-gradient(135deg, rgba(94, 247, 226, 0.2), rgba(143, 161, 255, 0.18))',
+              borderColor: 'rgba(94, 247, 226, 0.28)',
               color: 'var(--color-text)',
             }}
           >
@@ -74,7 +74,7 @@ export function XPBar({ xp, level, compact = false }: XPBarProps) {
 
       <div
         className="relative h-3 w-full overflow-hidden rounded-full"
-        style={{ background: 'rgba(8, 15, 28, 0.88)' }}
+        style={{ background: 'rgba(5, 12, 23, 0.9)' }}
       >
         <div
           className="relative h-full rounded-full transition-all duration-500"

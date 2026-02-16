@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Menu } from 'lucide-react'
 import { useAuth } from '@/features/auth/context/AuthContext'
@@ -7,7 +7,7 @@ import { reportError } from '@/services/logger.service'
 import { Sidebar } from './Sidebar'
 
 interface DashboardLayoutProps {
-  children: React.ReactNode
+  children: ReactNode
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
@@ -56,9 +56,15 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="relative min-h-screen overflow-hidden" style={{ background: 'var(--color-background)' }}>
-      <div className="pointer-events-none absolute inset-0 ambient-grid opacity-[0.04]" />
-      <div className="motion-orb motion-orb-cyan pointer-events-none absolute -left-24 top-0 h-72 w-72 rounded-full blur-3xl" style={{ background: 'rgba(14, 165, 233, 0.22)' }} />
-      <div className="motion-orb motion-orb-orange pointer-events-none absolute -right-20 bottom-0 h-72 w-72 rounded-full blur-3xl" style={{ background: 'rgba(249, 115, 22, 0.18)' }} />
+      <div className="pointer-events-none absolute inset-0 ambient-grid opacity-[0.045]" />
+      <div
+        className="motion-orb motion-orb-cyan pointer-events-none absolute -left-24 top-0 h-72 w-72 rounded-full blur-3xl"
+        style={{ background: 'rgba(94, 247, 226, 0.2)' }}
+      />
+      <div
+        className="motion-orb motion-orb-orange pointer-events-none absolute -right-20 bottom-0 h-72 w-72 rounded-full blur-3xl"
+        style={{ background: 'rgba(143, 161, 255, 0.18)' }}
+      />
 
       <div className="hidden lg:block">
         <Sidebar progress={progress} />
@@ -79,18 +85,20 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
       <button
         onClick={() => setShowMobileSidebar(true)}
-        className="fixed left-5 top-5 z-30 rounded-xl border p-3 transition-colors lg:hidden"
+        className="fixed left-4 top-4 z-30 rounded-xl border p-3 transition-all duration-200 hover:-translate-y-0.5 lg:hidden"
         style={{
-          background: 'rgba(15, 23, 42, 0.92)',
-          borderColor: 'rgba(148, 163, 184, 0.32)',
+          background: 'linear-gradient(145deg, rgba(11, 22, 41, 0.9), rgba(8, 17, 33, 0.92))',
+          borderColor: 'rgba(139, 161, 203, 0.32)',
           color: 'var(--color-text)',
+          boxShadow: '0 12px 30px -18px rgba(2, 8, 20, 0.92)',
         }}
+        aria-label="Abrir menu"
       >
         <Menu size={24} />
       </button>
 
       <div className="relative min-h-screen lg:pl-80">
-        <div key={location.pathname} className="page-shell animate-fade-in-up p-6 lg:p-10">
+        <div key={location.pathname} className="page-shell animate-fade-in-up p-4 sm:p-6 lg:p-10">
           {children}
         </div>
       </div>

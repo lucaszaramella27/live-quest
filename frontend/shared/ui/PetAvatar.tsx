@@ -9,105 +9,88 @@ interface PetAvatarProps {
 }
 
 const PET_STAGES = [
-  { maxLevel: 9, emoji: '🥚', name: 'Ovo', description: 'Seu início' },
-  { maxLevel: 24, emoji: '🐣', name: 'Filhote', description: 'Crescendo!' },
-  { maxLevel: 49, emoji: '🐥', name: 'Jovem', description: 'Ficando forte' },
-  { maxLevel: 99, emoji: '🦅', name: 'Adulto', description: 'Poderoso' },
-  { maxLevel: Infinity, emoji: '🔥', name: 'Lendário', description: 'DEUS' }
+  { maxLevel: 9, emoji: '\u{1F95A}', name: 'Ovo', description: 'Inicio da jornada' },
+  { maxLevel: 24, emoji: '\u{1F423}', name: 'Filhote', description: 'Crescimento inicial' },
+  { maxLevel: 49, emoji: '\u{1F425}', name: 'Jovem', description: 'Ritmo acelerado' },
+  { maxLevel: 99, emoji: '\u{1F985}', name: 'Adulto', description: 'Fase forte' },
+  { maxLevel: Number.POSITIVE_INFINITY, emoji: '\u{1F525}', name: 'Lendario', description: 'Nivel maximo' },
 ]
 
 const PETS_BY_LEVEL = [
-  { level: 1, emoji: '🥚', name: 'Ovo Misterioso' },
-  { level: 10, emoji: '🐣', name: 'Pintinho Noob' },
-  { level: 25, emoji: '🐥', name: 'Pássaro Streamer' },
-  { level: 50, emoji: '🦅', name: 'Águia Pro' },
-  { level: 100, emoji: '🔥', name: 'Fênix Imortal' }
+  { level: 1, emoji: '\u{1F95A}', name: 'Ovo Misterioso' },
+  { level: 10, emoji: '\u{1F423}', name: 'Pintinho Noob' },
+  { level: 25, emoji: '\u{1F425}', name: 'Passaro Streamer' },
+  { level: 50, emoji: '\u{1F985}', name: 'Aguia Pro' },
+  { level: 100, emoji: '\u{1F525}', name: 'Fenix Imortal' },
 ]
 
 export function PetAvatar({ level, size = 'md', animated = true, showLevel = true, className = '' }: PetAvatarProps) {
-  const currentPet = useMemo(() => {
-    const stage = PET_STAGES.find(s => level <= s.maxLevel) || PET_STAGES[PET_STAGES.length - 1]
-    return stage
-  }, [level])
+  const currentPet = useMemo(
+    () => PET_STAGES.find((stage) => level <= stage.maxLevel) || PET_STAGES[PET_STAGES.length - 1],
+    [level]
+  )
 
-  const sizeClasses = {
+  const emojiSize = {
     sm: 'text-3xl',
     md: 'text-5xl',
     lg: 'text-7xl',
-    xl: 'text-9xl'
+    xl: 'text-9xl',
   }
 
-  const containerSizes = {
-    sm: 'w-16 h-16',
-    md: 'w-24 h-24',
-    lg: 'w-32 h-32',
-    xl: 'w-48 h-48'
+  const boxSize = {
+    sm: 'h-16 w-16',
+    md: 'h-24 w-24',
+    lg: 'h-32 w-32',
+    xl: 'h-48 w-48',
   }
 
   return (
-    <div className={`relative ${className}`}>
-      <div 
-        className={`
-          ${containerSizes[size]} 
-          rounded-full 
-          bg-gradient-to-br from-brand-purple/20 to-brand-pink/20 
-          border-2 border-brand-purple/40
-          flex items-center justify-center
-          ${animated ? 'animate-float' : ''}
-          relative
-          group
-          hover:scale-110 hover:rotate-12 transition-all duration-300 cursor-pointer
-        `}
+    <div className={`group relative ${className}`}>
+      <div
+        className={`${boxSize[size]} ${animated ? 'animate-float' : ''} relative flex cursor-pointer items-center justify-center rounded-full border-2 transition-all duration-300 hover:scale-105`}
+        style={{
+          background: 'linear-gradient(145deg, rgba(94, 247, 226, 0.2), rgba(143, 161, 255, 0.18))',
+          borderColor: 'rgba(94, 247, 226, 0.4)',
+        }}
       >
-        {/* Glow effect */}
-        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-brand-purple to-brand-pink opacity-20 blur-xl group-hover:opacity-40 transition-opacity" />
-        
-        {/* Pet emoji */}
-        <span className={`${sizeClasses[size]} relative z-10 ${animated ? 'animate-bounce-slow' : ''}`}>
+        <div
+          className="absolute inset-0 rounded-full opacity-35 blur-xl transition-opacity duration-300 group-hover:opacity-55"
+          style={{ background: 'var(--gradient-primary)' }}
+        />
+
+        <span className={`${emojiSize[size]} relative z-10 ${animated ? 'animate-bounce-subtle' : ''}`}>
           {currentPet.emoji}
         </span>
 
-        {/* Level badge */}
         {showLevel && (
-          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-to-r from-brand-purple to-brand-pink rounded-full border-2 border-brand-dark">
-            <span className="text-xs font-bold text-white">Nv. {level}</span>
+          <div
+            className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full border px-3 py-1"
+            style={{
+              background: 'var(--gradient-primary)',
+              borderColor: 'rgba(94, 247, 226, 0.4)',
+              color: '#04131f',
+            }}
+          >
+            <span className="text-xs font-bold">Lv {level}</span>
           </div>
         )}
       </div>
 
-      {/* Tooltip */}
-      <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 whitespace-nowrap">
-        <div className="bg-brand-dark-secondary border border-brand-purple/40 rounded-xl px-4 py-2 shadow-xl">
-          <p className="text-sm font-bold text-gradient-animated">{currentPet.name}</p>
-          <p className="text-xs text-gray-400">{currentPet.description}</p>
-        </div>
+      <div className="pointer-events-none absolute -bottom-16 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-xl border px-4 py-2 opacity-0 shadow-xl transition-opacity duration-200 group-hover:opacity-100" style={{ background: 'rgba(8, 17, 33, 0.94)', borderColor: 'rgba(94, 247, 226, 0.3)' }}>
+        <p className="text-sm font-bold text-gradient">{currentPet.name}</p>
+        <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+          {currentPet.description}
+        </p>
       </div>
-
-      <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-10px); }
-        }
-        @keyframes bounce-slow {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-5px); }
-        }
-        .animate-float {
-          animation: float 3s ease-in-out infinite;
-        }
-        .animate-bounce-slow {
-          animation: bounce-slow 2s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   )
 }
 
 export function getPetStage(level: number) {
-  return PET_STAGES.find(s => level <= s.maxLevel) || PET_STAGES[PET_STAGES.length - 1]
+  return PET_STAGES.find((stage) => level <= stage.maxLevel) || PET_STAGES[PET_STAGES.length - 1]
 }
 
 export function getNextEvolution(level: number): { level: number; name: string } | null {
-  const nextPet = PETS_BY_LEVEL.find(p => p.level > level)
+  const nextPet = PETS_BY_LEVEL.find((pet) => pet.level > level)
   return nextPet || null
 }

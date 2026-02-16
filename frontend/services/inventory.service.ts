@@ -1,6 +1,11 @@
 import { backendClient } from './backend-client'
-import { createUserProgress, getTotalXPForLevel, getUserProgress } from './progress.service'
-import { getItemById } from './shop.service'
+import {
+  createUserProgress,
+  getTotalXPForLevel,
+  getUserProgress,
+  publishUserProgressSnapshot,
+} from './progress.service'
+import { getItemById, type ShopItem } from './shop.service'
 
 export interface ActivePowerup {
   itemId: string
@@ -10,17 +15,35 @@ export interface ActivePowerup {
   expiresAt: string | null
 }
 
+export type InventoryEquipSlot = Exclude<ShopItem['category'], 'powerup'>
+
+export interface EquippedItems {
+  avatar: string | null
+  badge: string | null
+  theme: string | null
+}
+
 export interface UserInventoryResponse {
   purchasedItemIds: string[]
   activePowerups: ActivePowerup[]
+  equippedItems: EquippedItems
 }
 
 export interface PurchaseShopItemResponse {
   success: boolean
   reason?: string
   newBalance: number
+  newXP: number
+  newLevel: number
   purchasedItemIds: string[]
   activePowerups: ActivePowerup[]
+  equippedItems: EquippedItems
+}
+
+export interface UpdateEquippedItemsResponse {
+  success: boolean
+  reason?: 'item_unavailable' | 'item_not_owned' | 'item_not_equipable'
+  equippedItems: EquippedItems
 }
 
 interface UserInventoryRow {
@@ -34,6 +57,64 @@ interface UserInventoryRow {
 interface ShopStockRow {
   item_id: string
   stock: number | null
+}
+
+export interface RewardPowerupModifiers {
+  xpMultiplier: number
+  coinMultiplier: number
+}
+
+const DEFAULT_EQUIPPED_ITEMS: EquippedItems = {
+  avatar: null,
+  badge: null,
+  theme: null,
+}
+
+const DEFAULT_REWARD_POWERUP_MODIFIERS: RewardPowerupModifiers = {
+  xpMultiplier: 1,
+  coinMultiplier: 1,
+}
+
+function getEquippedStorageKey(userId: string): string {
+  return `livequest_equipped_items:${userId}`
+}
+
+function readEquippedItemsFromStorage(userId: string): Partial<EquippedItems> {
+  if (typeof window === 'undefined') return {}
+
+  try {
+    const rawValue = window.localStorage.getItem(getEquippedStorageKey(userId))
+    if (!rawValue) return {}
+
+    const parsed = JSON.parse(rawValue) as Partial<EquippedItems>
+    if (!parsed || typeof parsed !== 'object') return {}
+    return parsed
+  } catch {
+    return {}
+  }
+}
+
+function saveEquippedItemsToStorage(userId: string, equippedItems: EquippedItems): void {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.localStorage.setItem(getEquippedStorageKey(userId), JSON.stringify(equippedItems))
+  } catch {
+    // Ignore storage errors.
+  }
+}
+
+function normalizeEquippedItems(userId: string, ownedItems: Set<string>): EquippedItems {
+  const storageState = readEquippedItemsFromStorage(userId)
+  const normalized: EquippedItems = { ...DEFAULT_EQUIPPED_ITEMS }
+
+  ;(['avatar', 'badge', 'theme'] as const).forEach((slot) => {
+    const candidate = storageState[slot]
+    normalized[slot] = typeof candidate === 'string' && ownedItems.has(candidate) ? candidate : null
+  })
+
+  saveEquippedItemsToStorage(userId, normalized)
+  return normalized
 }
 
 function mapActivePowerup(entry: Record<string, unknown>): ActivePowerup | null {
@@ -91,18 +172,16 @@ async function getInventoryRow(userId: string): Promise<UserInventoryRow | null>
 
 async function normalizeInventory(userId: string): Promise<UserInventoryResponse> {
   const row = await getInventoryRow(userId)
-  if (!row) {
-    return {
-      purchasedItemIds: [],
-      activePowerups: [],
-    }
-  }
+  const purchasedItemIds = Array.isArray(row?.purchased_item_ids) ? row?.purchased_item_ids : []
+  const purchasedSet = new Set(purchasedItemIds)
 
-  const activePowerups = (row.active_powerups || [])
+  const activePowerups = (row?.active_powerups || [])
     .map((entry) => mapActivePowerup(entry))
     .filter((entry): entry is ActivePowerup => Boolean(entry))
 
-  if (activePowerups.length !== (row.active_powerups || []).length) {
+  const equippedItems = normalizeEquippedItems(userId, purchasedSet)
+
+  if (activePowerups.length !== (row?.active_powerups || []).length) {
     await backendClient
       .from('user_inventories')
       .update({
@@ -113,14 +192,107 @@ async function normalizeInventory(userId: string): Promise<UserInventoryResponse
   }
 
   return {
-    purchasedItemIds: Array.isArray(row.purchased_item_ids) ? row.purchased_item_ids : [],
+    purchasedItemIds,
     activePowerups,
+    equippedItems,
+  }
+}
+
+function sanitizeMultiplier(value: number): number {
+  if (!Number.isFinite(value)) return 1
+  return Math.max(1, value)
+}
+
+export async function getRewardPowerupModifiers(userId: string): Promise<RewardPowerupModifiers> {
+  try {
+    const inventory = await normalizeInventory(userId)
+    return inventory.activePowerups.reduce<RewardPowerupModifiers>((result, powerup) => {
+      if (powerup.type === 'xp_boost') {
+        return {
+          ...result,
+          xpMultiplier: Math.max(result.xpMultiplier, sanitizeMultiplier(powerup.value)),
+        }
+      }
+
+      if (powerup.type === 'double_coins') {
+        return {
+          ...result,
+          coinMultiplier: Math.max(result.coinMultiplier, sanitizeMultiplier(powerup.value)),
+        }
+      }
+
+      return result
+    }, { ...DEFAULT_REWARD_POWERUP_MODIFIERS })
+  } catch {
+    return { ...DEFAULT_REWARD_POWERUP_MODIFIERS }
   }
 }
 
 export async function getUserInventory(): Promise<UserInventoryResponse> {
   const userId = await getCurrentUserId()
   return normalizeInventory(userId)
+}
+
+export async function equipInventoryItem(itemId: string): Promise<UpdateEquippedItemsResponse> {
+  const userId = await getCurrentUserId()
+  const item = getItemById(itemId)
+
+  if (!item) {
+    return {
+      success: false,
+      reason: 'item_unavailable',
+      equippedItems: { ...DEFAULT_EQUIPPED_ITEMS },
+    }
+  }
+
+  if (item.category === 'powerup') {
+    const inventory = await normalizeInventory(userId)
+    return {
+      success: false,
+      reason: 'item_not_equipable',
+      equippedItems: inventory.equippedItems,
+    }
+  }
+
+  const inventory = await normalizeInventory(userId)
+  const ownedItems = new Set(inventory.purchasedItemIds)
+  if (!ownedItems.has(item.id)) {
+    return {
+      success: false,
+      reason: 'item_not_owned',
+      equippedItems: inventory.equippedItems,
+    }
+  }
+
+  const slot = item.category as InventoryEquipSlot
+  const nextEquippedItems: EquippedItems = {
+    ...inventory.equippedItems,
+    [slot]: item.id,
+  }
+
+  saveEquippedItemsToStorage(userId, nextEquippedItems)
+
+  return {
+    success: true,
+    equippedItems: nextEquippedItems,
+  }
+}
+
+export async function unequipInventorySlot(slot: InventoryEquipSlot): Promise<UpdateEquippedItemsResponse> {
+  const userId = await getCurrentUserId()
+  const inventory = await normalizeInventory(userId)
+
+  const nextEquippedItems: EquippedItems = {
+    ...inventory.equippedItems,
+    [slot]: null,
+  }
+
+  saveEquippedItemsToStorage(userId, nextEquippedItems)
+
+  return {
+    success: true,
+    equippedItems: nextEquippedItems,
+  }
 }
 
 export async function purchaseShopItem(itemId: string): Promise<PurchaseShopItemResponse> {
@@ -132,31 +304,40 @@ export async function purchaseShopItem(itemId: string): Promise<PurchaseShopItem
       success: false,
       reason: 'item_unavailable',
       newBalance: 0,
+      newXP: 0,
+      newLevel: 1,
       purchasedItemIds: [],
       activePowerups: [],
+      equippedItems: { ...DEFAULT_EQUIPPED_ITEMS },
     }
   }
 
   const progress = (await getUserProgress(userId)) || (await createUserProgress(userId))
+  const currentInventory = await normalizeInventory(userId)
 
   if (item.isPremiumOnly && !progress.isPremium) {
     return {
       success: false,
       reason: 'premium_required',
       newBalance: progress.coins,
-      purchasedItemIds: [],
-      activePowerups: [],
+      newXP: progress.xp,
+      newLevel: progress.level,
+      purchasedItemIds: currentInventory.purchasedItemIds,
+      activePowerups: currentInventory.activePowerups,
+      equippedItems: currentInventory.equippedItems,
     }
   }
 
   if (progress.coins < item.price) {
-    const inventory = await normalizeInventory(userId)
     return {
       success: false,
       reason: 'coins_insufficient',
       newBalance: progress.coins,
-      purchasedItemIds: inventory.purchasedItemIds,
-      activePowerups: inventory.activePowerups,
+      newXP: progress.xp,
+      newLevel: progress.level,
+      purchasedItemIds: currentInventory.purchasedItemIds,
+      activePowerups: currentInventory.activePowerups,
+      equippedItems: currentInventory.equippedItems,
     }
   }
 
@@ -177,8 +358,11 @@ export async function purchaseShopItem(itemId: string): Promise<PurchaseShopItem
         success: false,
         reason: 'item_unavailable',
         newBalance: progress.coins,
-        purchasedItemIds: [],
-        activePowerups: [],
+        newXP: progress.xp,
+        newLevel: progress.level,
+        purchasedItemIds: currentInventory.purchasedItemIds,
+        activePowerups: currentInventory.activePowerups,
+        equippedItems: currentInventory.equippedItems,
       }
     }
 
@@ -260,10 +444,30 @@ export async function purchaseShopItem(itemId: string): Promise<PurchaseShopItem
     throw inventoryUpdateError
   }
 
+  const equippedItems = normalizeEquippedItems(userId, purchasedItemIds)
+  if (item.category !== 'powerup') {
+    const slot = item.category as InventoryEquipSlot
+    if (!equippedItems[slot]) {
+      equippedItems[slot] = item.id
+      saveEquippedItemsToStorage(userId, equippedItems)
+    }
+  }
+
+  publishUserProgressSnapshot({
+    ...progress,
+    coins: newBalance,
+    xp: updatedXP,
+    level: updatedLevel,
+    updatedAt: new Date(nowIso),
+  })
+
   return {
     success: true,
     newBalance,
+    newXP: updatedXP,
+    newLevel: updatedLevel,
     purchasedItemIds: Array.from(purchasedItemIds),
     activePowerups,
+    equippedItems,
   }
 }

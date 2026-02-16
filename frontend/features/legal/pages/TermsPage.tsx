@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom'
-import { ArrowLeft, ShieldCheck, FileText } from 'lucide-react'
+import { ArrowLeft, FileText, ShieldCheck } from 'lucide-react'
 
 export function TermsPage() {
   return (
     <div className="relative min-h-screen overflow-hidden px-6 py-10" style={{ background: 'var(--color-background)', color: 'var(--color-text)' }}>
-      <div className="pointer-events-none absolute inset-0 ambient-grid opacity-[0.04]" />
-      <div className="pointer-events-none absolute -left-24 top-0 h-72 w-72 rounded-full blur-3xl" style={{ background: 'rgba(14, 165, 233, 0.2)' }} />
-      <div className="pointer-events-none absolute -right-24 bottom-0 h-72 w-72 rounded-full blur-3xl" style={{ background: 'rgba(249, 115, 22, 0.18)' }} />
+      <div className="pointer-events-none absolute inset-0 ambient-grid opacity-[0.05]" />
+      <div className="pointer-events-none absolute -left-24 top-0 h-80 w-80 rounded-full blur-3xl" style={{ background: 'rgba(94, 247, 226, 0.2)' }} />
+      <div className="pointer-events-none absolute -right-24 bottom-0 h-80 w-80 rounded-full blur-3xl" style={{ background: 'rgba(143, 161, 255, 0.18)' }} />
 
       <div className="relative mx-auto max-w-4xl space-y-6">
         <Link
@@ -18,7 +18,7 @@ export function TermsPage() {
         </Link>
 
         <header className="surface-card rounded-2xl border p-6 md:p-8">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs" style={{ borderColor: 'rgba(125, 211, 252, 0.35)', color: 'var(--color-primary)' }}>
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs" style={{ borderColor: 'rgba(94, 247, 226, 0.35)', color: 'var(--color-primary)' }}>
             <FileText className="h-3.5 w-3.5" /> Termos
           </div>
           <h1 className="text-3xl font-bold md:text-4xl">Termos de uso</h1>
@@ -62,7 +62,7 @@ export function TermsPage() {
           </div>
         </article>
 
-        <div className="surface-card rounded-xl border p-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+        <div className="glass rounded-xl border p-4 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
           <div className="flex items-center gap-2" style={{ color: 'var(--color-primary)' }}>
             <ShieldCheck className="h-4 w-4" />
             <span className="font-semibold">Compromisso com seguranca</span>

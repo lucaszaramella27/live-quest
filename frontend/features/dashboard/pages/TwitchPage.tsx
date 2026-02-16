@@ -1,33 +1,33 @@
-﻿import { useState, useEffect } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useAuth } from '@/features/auth/context/AuthContext'
-import { GradientCard, Button, Toast, Modal, Input } from '@/shared/ui'
+import { Button, GradientCard, Input, Modal, Toast } from '@/shared/ui'
 import {
-  Twitch,
+  Check,
+  Crown,
+  Gift,
   Link2,
+  Plus,
+  Radio,
+  RefreshCw,
+  Settings,
+  Target,
+  TrendingUp,
+  Twitch,
   Unlink,
   Users,
-  Radio,
-  Target,
-  Gift,
   Zap,
-  Settings,
-  RefreshCw,
-  TrendingUp,
-  Crown,
-  Check,
-  Plus,
 } from 'lucide-react'
 import {
-  getTwitchAuthUrl,
-  subscribeToTwitchIntegration,
-  disconnectTwitch,
   checkLiveStatusAndReward,
-  getTwitchGoals,
   createTwitchGoal,
+  disconnectTwitch,
   getSuggestedTwitchGoals,
+  getTwitchAuthUrl,
+  getTwitchGoals,
   saveTwitchIntegration,
-  type TwitchIntegration,
+  subscribeToTwitchIntegration,
   type TwitchGoal,
+  type TwitchIntegration,
 } from '@/services/twitch.service'
 import { reportError } from '@/services/logger.service'
 
@@ -38,16 +38,14 @@ export function TwitchPage() {
   const [loading, setLoading] = useState(true)
   const [checking, setChecking] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
-  const [toastType, setToastType] = useState<'success' | 'streak' | 'goal' | 'task' | 'achievement'>('success')
+  const [toastType, setToastType] = useState<'success' | 'streak' | 'goal' | 'task' | 'achievement' | 'error'>('success')
   const [showToast, setShowToast] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showGoalModal, setShowGoalModal] = useState(false)
-  
-  // Settings form
+
   const [autoXpOnLive, setAutoXpOnLive] = useState(true)
   const [xpPerHourLive, setXpPerHourLive] = useState(50)
 
-  // New goal form
   const [newGoalType, setNewGoalType] = useState<TwitchGoal['type']>('followers')
   const [newGoalTitle, setNewGoalTitle] = useState('')
   const [newGoalTarget, setNewGoalTarget] = useState('')
@@ -55,7 +53,6 @@ export function TwitchPage() {
   useEffect(() => {
     if (!user) return
 
-    // Listener em tempo real para integração
     const unsubscribe = subscribeToTwitchIntegration(user.id, (data) => {
       setIntegration(data)
       if (data) {
@@ -65,7 +62,7 @@ export function TwitchPage() {
       setLoading(false)
     })
 
-    loadGoals()
+    void loadGoals()
 
     return () => unsubscribe()
   }, [user])
@@ -76,64 +73,60 @@ export function TwitchPage() {
       const goalsData = await getTwitchGoals(user.id)
       setGoals(goalsData)
     } catch (error) {
-      reportError('Erro ao carregar metas:', error)
+      reportError('twitch_page_load_goals', error)
     }
   }
 
   function handleConnect() {
     if (!user) return
 
-    // Gera state aleatório para segurança
     const state = Math.random().toString(36).substring(7)
     localStorage.setItem('twitch_auth_state', state)
     localStorage.setItem('twitch_auth_user', user.id || '')
-    
-    // Redireciona para a Twitch
     window.location.href = getTwitchAuthUrl(state)
   }
 
   async function handleDisconnect() {
     if (!user) return
-    
+
     try {
       await disconnectTwitch()
-      setToastMessage('Twitch desconectada com sucesso!')
+      setToastMessage('Conta Twitch desconectada com sucesso.')
       setToastType('success')
       setShowToast(true)
     } catch (error) {
-      reportError('Erro ao desconectar:', error)
-      setToastMessage('Erro ao desconectar da Twitch')
-      setToastType('task')
+      reportError('twitch_page_disconnect', error)
+      setToastMessage('Erro ao desconectar da Twitch.')
+      setToastType('error')
       setShowToast(true)
     }
   }
 
   async function handleCheckLive() {
     if (!user) return
-    
+
     setChecking(true)
     try {
       const result = await checkLiveStatusAndReward()
-      
+
       if (result.isLive) {
         if (result.xpAwarded > 0) {
-          setToastMessage(`Você está AO VIVO! +${result.xpAwarded} XP`)
+          setToastMessage(`Live detectada. +${result.xpAwarded} XP`)
         } else {
-          setToastMessage('Você está AO VIVO!')
+          setToastMessage('Live detectada com sucesso.')
         }
         setToastType('achievement')
       } else {
-        setToastMessage('Você não está ao vivo no momento')
+        setToastMessage('Seu canal esta offline no momento.')
         setToastType('success')
       }
       setShowToast(true)
-      
-      // Recarrega metas
+
       await loadGoals()
     } catch (error) {
-      reportError('Erro ao verificar live:', error)
-      setToastMessage('Erro ao verificar status')
-      setToastType('task')
+      reportError('twitch_page_check_live', error)
+      setToastMessage('Erro ao verificar status da live.')
+      setToastType('error')
       setShowToast(true)
     } finally {
       setChecking(false)
@@ -142,7 +135,7 @@ export function TwitchPage() {
 
   async function handleSaveSettings() {
     if (!user || !integration) return
-    
+
     try {
       await saveTwitchIntegration(user.id, {
         autoXpOnLive,
@@ -150,20 +143,23 @@ export function TwitchPage() {
         autoGoalsFromTwitch: integration.autoGoalsFromTwitch ?? true,
       })
       setShowSettingsModal(false)
-      setToastMessage('Configurações salvas!')
+      setToastMessage('Configuracoes salvas com sucesso.')
       setToastType('success')
       setShowToast(true)
     } catch (error) {
-      reportError('Erro ao salvar:', error)
+      reportError('twitch_page_save_settings', error)
+      setToastMessage('Erro ao salvar configuracoes.')
+      setToastType('error')
+      setShowToast(true)
     }
   }
 
   async function handleCreateGoal() {
     if (!user || !integration || !newGoalTitle || !newGoalTarget) return
-    
-    const target = parseInt(newGoalTarget)
-    if (isNaN(target) || target <= 0) return
-    
+
+    const target = parseInt(newGoalTarget, 10)
+    if (Number.isNaN(target) || target <= 0) return
+
     try {
       await createTwitchGoal(user.id, {
         type: newGoalType,
@@ -173,17 +169,20 @@ export function TwitchPage() {
         xpReward: Math.floor(target / 10) * 10,
         coinsReward: Math.floor(target / 50) * 5,
       })
-      
+
       setShowGoalModal(false)
       setNewGoalTitle('')
       setNewGoalTarget('')
-      setToastMessage('Meta criada! 🎯')
+      setToastMessage('Meta criada com sucesso.')
       setToastType('goal')
       setShowToast(true)
-      
+
       await loadGoals()
     } catch (error) {
-      reportError('Erro ao criar meta:', error)
+      reportError('twitch_page_create_goal', error)
+      setToastMessage('Erro ao criar meta.')
+      setToastType('error')
+      setShowToast(true)
     }
   }
 
@@ -202,47 +201,47 @@ export function TwitchPage() {
       )
     : []
 
-  const activeGoals = goals.filter(g => !g.completed)
-  const completedGoals = goals.filter(g => g.completed)
+  const activeGoals = goals.filter((goal) => !goal.completed)
+  const completedGoals = goals.filter((goal) => goal.completed)
   const isConnected = !!integration?.twitchUserId
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-400">Carregando integração...</p>
-        </div>
+      <div className="flex min-h-[55vh] items-center justify-center">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
       </div>
     )
   }
 
   return (
-    <div>
-      {/* Page Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3">
-          <Twitch className="w-8 h-8 text-[#9146FF]" />
-          <h1 className="text-3xl font-bold">Integração Twitch</h1>
+    <div className="mx-auto w-full max-w-7xl space-y-8">
+      <GradientCard hover={false} className="relative overflow-hidden p-6 sm:p-8">
+        <div className="pointer-events-none absolute inset-0 opacity-90" style={{ background: 'var(--gradient-overlay)' }} />
+        <div className="relative">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ borderColor: 'rgba(145, 70, 255, 0.35)', color: '#d5beff' }}>
+            <Twitch className="h-4 w-4" />
+            Channel sync
+          </div>
+          <h1 className="text-3xl font-bold sm:text-4xl">Integracao Twitch</h1>
+          <p className="mt-3 text-sm sm:text-base" style={{ color: 'var(--color-text-secondary)' }}>
+            Conecte sua conta para metas automaticas, status de live e recompensas em tempo real.
+          </p>
         </div>
-        <p className="text-gray-400 mt-2">
-          Conecte sua conta da Twitch para metas automáticas e recompensas
-        </p>
-      </div>
+      </GradientCard>
 
-      {/* Connection Status Card */}
-      <GradientCard className="mb-8">
+      <GradientCard hover={false} className="p-6">
         {integration && isConnected ? (
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div className="flex flex-col items-start justify-between gap-6 lg:flex-row lg:items-center">
             <div className="flex items-center gap-4">
               <div className="relative">
                 <img
                   src={integration.twitchProfileImage}
                   alt={integration.twitchDisplayName}
-                  className="w-20 h-20 rounded-full border-4 border-[#9146FF]"
+                  className="h-20 w-20 rounded-full border-4 object-cover"
+                  style={{ borderColor: '#9146FF' }}
                 />
                 {integration.isLive && (
-                  <div className="absolute -bottom-1 -right-1 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-pulse">
+                  <div className="absolute -bottom-1 -right-1 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white">
                     LIVE
                   </div>
                 )}
@@ -250,19 +249,11 @@ export function TwitchPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-2xl font-bold">{integration.twitchDisplayName}</h2>
-                  {integration.broadcasterType === 'partner' && (
-                    <span title="Partner">
-                      <Crown className="w-5 h-5 text-[#9146FF]" />
-                    </span>
-                  )}
-                  {integration.broadcasterType === 'affiliate' && (
-                    <span title="Afiliado">
-                      <Check className="w-5 h-5 text-[#9146FF]" />
-                    </span>
-                  )}
+                  {integration.broadcasterType === 'partner' && <Crown className="h-5 w-5 text-[#9146FF]" />}
+                  {integration.broadcasterType === 'affiliate' && <Check className="h-5 w-5 text-[#9146FF]" />}
                 </div>
-                <p className="text-gray-400">@{integration.twitchLogin}</p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p style={{ color: 'var(--color-text-secondary)' }}>@{integration.twitchLogin}</p>
+                <p className="mt-1 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
                   Conectado em {new Date(integration.connectedAt).toLocaleDateString('pt-BR')}
                 </p>
               </div>
@@ -272,47 +263,46 @@ export function TwitchPage() {
               <Button
                 variant="secondary"
                 size="sm"
-                icon={<RefreshCw className={`w-4 h-4 ${checking ? 'animate-spin' : ''}`} />}
+                icon={<RefreshCw className={`h-4 w-4 ${checking ? 'animate-spin' : ''}`} />}
                 onClick={handleCheckLive}
                 disabled={checking}
               >
-                {checking ? 'Verificando...' : 'Verificar Live'}
+                {checking ? 'Verificando...' : 'Verificar live'}
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
-                icon={<Settings className="w-4 h-4" />}
+                icon={<Settings className="h-4 w-4" />}
                 onClick={() => setShowSettingsModal(true)}
               >
-                Configurações
+                Configuracoes
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
-                icon={<Unlink className="w-4 h-4" />}
+                icon={<Unlink className="h-4 w-4" />}
                 onClick={handleDisconnect}
-                className="text-red-400 hover:text-red-300"
+                className="text-red-300 hover:text-red-200"
               >
                 Desconectar
               </Button>
             </div>
           </div>
         ) : (
-          <div className="text-center py-8">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-[#9146FF]/20 flex items-center justify-center">
-              <Twitch className="w-10 h-10 text-[#9146FF]" />
+          <div className="py-8 text-center">
+            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full" style={{ background: 'rgba(145, 70, 255, 0.18)' }}>
+              <Twitch className="h-10 w-10 text-[#9146FF]" />
             </div>
-            <h2 className="text-xl font-bold mb-2">Conecte sua Twitch</h2>
-            <p className="text-gray-400 mb-6 max-w-md mx-auto">
-              Vincule sua conta da Twitch para ganhar XP automaticamente quando estiver ao vivo,
-              criar metas baseadas no seu canal e muito mais!
+            <h2 className="mb-2 text-xl font-bold">Conecte sua Twitch</h2>
+            <p className="mx-auto mb-6 max-w-md text-sm sm:text-base" style={{ color: 'var(--color-text-secondary)' }}>
+              Vincule seu canal para receber metas inteligentes, checagem automatica de live e recompensas.
             </p>
             <Button
               variant="primary"
               size="lg"
-              icon={<Link2 className="w-5 h-5" />}
+              icon={<Link2 className="h-5 w-5" />}
               onClick={handleConnect}
-              className="bg-[#9146FF] hover:bg-[#7c3aed]"
+              style={{ background: '#9146FF', borderColor: '#7c3aed', color: '#ffffff' }}
             >
               Conectar com Twitch
             </Button>
@@ -320,77 +310,57 @@ export function TwitchPage() {
         )}
       </GradientCard>
 
-      {/* Stats Grid - Only show when connected */}
       {integration && isConnected && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <GradientCard className="text-center py-6">
-              <Users className="w-8 h-8 mx-auto mb-2 text-[#9146FF]" />
-              <p className="text-3xl font-bold">{integration.totalFollowers.toLocaleString()}</p>
-              <p className="text-sm text-gray-400">Seguidores</p>
-            </GradientCard>
-            
-            <GradientCard className="text-center py-6">
-              <Radio className={`w-8 h-8 mx-auto mb-2 ${integration.isLive ? 'text-red-500 animate-pulse' : 'text-gray-500'}`} />
-              <p className="text-3xl font-bold">{integration.isLive ? 'AO VIVO' : 'Offline'}</p>
-              <p className="text-sm text-gray-400">Status</p>
-            </GradientCard>
-            
-            <GradientCard className="text-center py-6">
-              <Zap className="w-8 h-8 mx-auto mb-2 text-yellow-500" />
-              <p className="text-3xl font-bold">{xpPerHourLive}</p>
-              <p className="text-sm text-gray-400">XP/hora ao vivo</p>
-            </GradientCard>
-            
-            <GradientCard className="text-center py-6">
-              <Target className="w-8 h-8 mx-auto mb-2" style={{ color: 'var(--color-primary)' }} />
-              <p className="text-3xl font-bold">{activeGoals.length}</p>
-              <p className="text-sm text-gray-400">Metas ativas</p>
-            </GradientCard>
-          </div>
+          <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <MiniStat
+              icon={<Users className="h-8 w-8 text-[#9146FF]" />}
+              value={integration.totalFollowers.toLocaleString()}
+              label="Seguidores"
+            />
+            <MiniStat
+              icon={<Radio className={`h-8 w-8 ${integration.isLive ? 'animate-pulse text-red-500' : 'text-zinc-500'}`} />}
+              value={integration.isLive ? 'AO VIVO' : 'Offline'}
+              label="Status"
+            />
+            <MiniStat icon={<Zap className="h-8 w-8 text-amber-300" />} value={xpPerHourLive} label="XP/hora" />
+            <MiniStat icon={<Target className="h-8 w-8 text-cyan-200" />} value={activeGoals.length} label="Metas ativas" />
+          </section>
 
-          {/* Twitch Goals Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Active Goals */}
+          <section className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <GradientCard>
-              <div className="flex items-center justify-between mb-6">
+              <div className="mb-6 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="p-3 rounded-xl bg-[#9146FF]/20">
-                    <Target className="w-6 h-6 text-[#9146FF]" />
+                  <div className="rounded-xl bg-[#9146FF]/20 p-3">
+                    <Target className="h-6 w-6 text-[#9146FF]" />
                   </div>
                   <h3 className="text-xl font-bold">Metas da Twitch</h3>
                 </div>
-                <Button
-                  size="sm"
-                  icon={<Plus className="w-4 h-4" />}
-                  onClick={() => setShowGoalModal(true)}
-                >
-                  Nova Meta
+                <Button size="sm" icon={<Plus className="h-4 w-4" />} onClick={() => setShowGoalModal(true)}>
+                  Nova meta
                 </Button>
               </div>
 
               {activeGoals.length === 0 ? (
-                <p className="text-gray-400 text-center py-8">
-                  Nenhuma meta ativa. Crie sua primeira meta!
+                <p className="py-8 text-center" style={{ color: 'var(--color-text-secondary)' }}>
+                  Nenhuma meta ativa. Crie sua primeira meta.
                 </p>
               ) : (
                 <div className="space-y-4">
-                  {activeGoals.map(goal => (
-                    <div key={goal.id} className="p-4 rounded-xl" style={{ background: 'var(--color-background-secondary)' }}>
-                      <div className="flex items-center justify-between mb-2">
+                  {activeGoals.map((goal) => (
+                    <div key={goal.id} className="glass rounded-xl border p-4">
+                      <div className="mb-2 flex items-center justify-between gap-3">
                         <span className="font-semibold">{goal.title}</span>
-                        <span className="text-sm text-[#9146FF]">
-                          +{goal.xpReward} XP
-                        </span>
+                        <span className="text-sm font-semibold text-[#9146FF]">+{goal.xpReward} XP</span>
                       </div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="flex-1 h-2 rounded-full" style={{ background: 'var(--color-background)' }}>
+                      <div className="mb-2 flex items-center gap-2">
+                        <div className="h-2 flex-1 rounded-full bg-slate-950/70">
                           <div
-                            className="h-full rounded-full bg-[#9146FF] transition-all duration-500"
-                            style={{ width: `${Math.min((goal.currentValue / goal.targetValue) * 100, 100)}%` }}
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{ width: `${Math.min((goal.currentValue / goal.targetValue) * 100, 100)}%`, background: '#9146FF' }}
                           />
                         </div>
-                        <span className="text-sm text-gray-400">
+                        <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
                           {goal.currentValue.toLocaleString()}/{goal.targetValue.toLocaleString()}
                         </span>
                       </div>
@@ -400,101 +370,91 @@ export function TwitchPage() {
               )}
 
               {completedGoals.length > 0 && (
-                <div className="mt-6 pt-6 border-t border-white/10">
-                  <p className="text-sm text-gray-400 mb-3">{completedGoals.length} meta(s) concluída(s)</p>
+                <div className="mt-6 border-t pt-5" style={{ borderColor: 'rgba(139, 161, 203, 0.2)' }}>
+                  <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                    {completedGoals.length} meta(s) concluida(s) nesta fase.
+                  </p>
                 </div>
               )}
             </GradientCard>
 
-            {/* Suggested Goals */}
             <GradientCard>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-3 rounded-xl bg-yellow-500/20">
-                  <TrendingUp className="w-6 h-6 text-yellow-500" />
+              <div className="mb-6 flex items-center gap-3">
+                <div className="rounded-xl bg-amber-400/15 p-3">
+                  <TrendingUp className="h-6 w-6 text-amber-300" />
                 </div>
-                <h3 className="text-xl font-bold">Metas Sugeridas</h3>
+                <h3 className="text-xl font-bold">Metas sugeridas</h3>
               </div>
 
               <div className="space-y-4">
                 {suggestedGoals.map((suggestion, index) => (
-                  <div
+                  <button
                     key={index}
-                    className="p-4 rounded-xl border border-dashed border-white/20 hover:border-[#9146FF]/50 transition-colors cursor-pointer group"
+                    type="button"
+                    className="w-full rounded-xl border border-dashed p-4 text-left transition-colors hover:border-[#9146FF]/45"
+                    style={{ borderColor: 'rgba(139, 161, 203, 0.24)' }}
                     onClick={() => handleAddSuggestedGoal(suggestion)}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="font-semibold group-hover:text-[#9146FF] transition-colors">
-                          {suggestion.title}
-                        </p>
-                        <p className="text-sm text-gray-400">
-                          +{suggestion.xpReward} XP ⬢ +{suggestion.coinsReward} coins
+                        <p className="font-semibold transition-colors">{suggestion.title}</p>
+                        <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                          +{suggestion.xpReward} XP and +{suggestion.coinsReward} coins
                         </p>
                       </div>
-                      <Plus className="w-5 h-5 text-gray-500 group-hover:text-[#9146FF] transition-colors" />
+                      <Plus className="h-5 w-5" style={{ color: 'var(--color-text-secondary)' }} />
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             </GradientCard>
-          </div>
+          </section>
 
-          {/* XP Rewards Info */}
-          <GradientCard className="mt-6">
-            <div className="flex items-center gap-3 mb-4">
-              <Gift className="w-6 h-6 text-[#9146FF]" />
-              <h3 className="text-lg font-bold">Recompensas Automáticas</h3>
+          <GradientCard>
+            <div className="mb-4 flex items-center gap-3">
+              <Gift className="h-6 w-6 text-[#9146FF]" />
+              <h3 className="text-lg font-bold">Recompensas automaticas</h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div className="p-3 rounded-lg" style={{ background: 'var(--color-background-secondary)' }}>
-                <p className="font-semibold text-[#9146FF]">🎮 Ao Vivo</p>
-                <p className="text-gray-400">{xpPerHourLive} XP por hora streamando</p>
-              </div>
-              <div className="p-3 rounded-lg" style={{ background: 'var(--color-background-secondary)' }}>
-                <p className="font-semibold text-[#9146FF]">⭐ Novo Sub</p>
-                <p className="text-gray-400">100 XP + 25 coins</p>
-              </div>
-              <div className="p-3 rounded-lg" style={{ background: 'var(--color-background-secondary)' }}>
-                <p className="font-semibold text-[#9146FF]">🎁 Gift Sub</p>
-                <p className="text-gray-400">50 XP + 10 coins por gift</p>
-              </div>
+
+            <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-3">
+              <RewardTile title="Ao vivo" text={`${xpPerHourLive} XP por hora streamando`} />
+              <RewardTile title="Novo sub" text="100 XP + 25 coins" />
+              <RewardTile title="Gift sub" text="50 XP + 10 coins por gift" />
             </div>
           </GradientCard>
         </>
       )}
 
-      {/* Settings Modal */}
-      <Modal
-        isOpen={showSettingsModal}
-        onClose={() => setShowSettingsModal(false)}
-        title="Configurações da Twitch"
-      >
+      <Modal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} title="Configuracoes da Twitch">
         <div className="space-y-6">
-          <div>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={autoXpOnLive}
-                onChange={(e) => setAutoXpOnLive(e.target.checked)}
-                className="w-5 h-5 rounded border-gray-600 text-[#9146FF] focus:ring-[#9146FF]"
-              />
-              <div>
-                <p className="font-semibold">XP Automático ao Vivo</p>
-                <p className="text-sm text-gray-400">Ganhe XP automaticamente enquanto estiver streamando</p>
-              </div>
-            </label>
-          </div>
+          <label className="flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              checked={autoXpOnLive}
+              onChange={(event) => setAutoXpOnLive(event.target.checked)}
+              className="mt-0.5 h-5 w-5 rounded border-gray-600"
+              style={{ accentColor: '#9146FF' }}
+            />
+            <div>
+              <p className="font-semibold">XP automatico ao vivo</p>
+              <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                Ganhe XP automaticamente enquanto estiver streamando.
+              </p>
+            </div>
+          </label>
 
           <div>
-            <label className="block text-sm font-medium mb-2">XP por hora ao vivo</label>
             <Input
+              label="XP por hora ao vivo"
               type="number"
               value={xpPerHourLive}
-              onChange={(e) => setXpPerHourLive(Number(e.target.value))}
+              onChange={(event) => setXpPerHourLive(Number(event.target.value))}
               min={10}
               max={200}
             />
-            <p className="text-xs text-gray-400 mt-1">Entre 10 e 200 XP por hora</p>
+            <p className="mt-1 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+              Valor permitido: entre 10 e 200 XP por hora.
+            </p>
           </div>
 
           <div className="flex gap-3">
@@ -508,59 +468,88 @@ export function TwitchPage() {
         </div>
       </Modal>
 
-      {/* New Goal Modal */}
-      <Modal
-        isOpen={showGoalModal}
-        onClose={() => setShowGoalModal(false)}
-        title="Nova Meta da Twitch"
-      >
+      <Modal isOpen={showGoalModal} onClose={() => setShowGoalModal(false)} title="Nova meta da Twitch">
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Tipo de Meta</label>
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--color-text-secondary)' }}>
+              Tipo da meta
+            </label>
             <select
               value={newGoalType}
-              onChange={(e) => setNewGoalType(e.target.value as TwitchGoal['type'])}
-              className="w-full px-4 py-3 rounded-xl border border-white/10 bg-brand-dark-secondary text-white focus:border-[#9146FF] focus:outline-none"
+              onChange={(event) => setNewGoalType(event.target.value as TwitchGoal['type'])}
+              className="w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-4"
+              style={{
+                background: 'linear-gradient(145deg, rgba(11, 22, 41, 0.78), rgba(8, 17, 33, 0.82))',
+                borderColor: 'rgba(139, 161, 203, 0.28)',
+                color: 'var(--color-text)',
+                boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.06)',
+              }}
             >
               <option value="followers">Seguidores</option>
               <option value="subscribers">Inscritos</option>
-              <option value="hours_streamed">Horas Streamadas</option>
+              <option value="hours_streamed">Horas streamadas</option>
             </select>
           </div>
 
           <Input
-            label="Título da Meta"
+            label="Titulo da meta"
             placeholder="Ex: Atingir 1.000 seguidores"
             value={newGoalTitle}
-            onChange={(e) => setNewGoalTitle(e.target.value)}
+            onChange={(event) => setNewGoalTitle(event.target.value)}
           />
 
           <Input
-            label="Valor Alvo"
+            label="Valor alvo"
             type="number"
             placeholder="Ex: 1000"
             value={newGoalTarget}
-            onChange={(e) => setNewGoalTarget(e.target.value)}
+            onChange={(event) => setNewGoalTarget(event.target.value)}
           />
 
           <div className="flex gap-3">
             <Button variant="ghost" onClick={() => setShowGoalModal(false)} className="flex-1">
               Cancelar
             </Button>
-            <Button onClick={handleCreateGoal} className="flex-1 bg-[#9146FF] hover:bg-[#7c3aed]">
-              Criar Meta
+            <Button onClick={handleCreateGoal} className="flex-1" style={{ background: '#9146FF', borderColor: '#7c3aed', color: '#ffffff' }}>
+              Criar meta
             </Button>
           </div>
         </div>
       </Modal>
 
-      {/* Toast */}
-      <Toast
-        message={toastMessage}
-        type={toastType}
-        show={showToast}
-        onClose={() => setShowToast(false)}
-      />
+      <Toast message={toastMessage} type={toastType} show={showToast} onClose={() => setShowToast(false)} />
+    </div>
+  )
+}
+
+interface MiniStatProps {
+  icon: ReactNode
+  value: string | number
+  label: string
+}
+
+function MiniStat({ icon, value, label }: MiniStatProps) {
+  return (
+    <GradientCard className="py-6 text-center">
+      <div className="mb-2 flex justify-center">{icon}</div>
+      <p className="text-3xl font-bold">{value}</p>
+      <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+        {label}
+      </p>
+    </GradientCard>
+  )
+}
+
+interface RewardTileProps {
+  title: string
+  text: string
+}
+
+function RewardTile({ title, text }: RewardTileProps) {
+  return (
+    <div className="glass rounded-lg border p-3">
+      <p className="font-semibold text-[#9146FF]">{title}</p>
+      <p style={{ color: 'var(--color-text-secondary)' }}>{text}</p>
     </div>
   )
 }

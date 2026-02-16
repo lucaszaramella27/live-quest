@@ -1,8 +1,9 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import type { ReactNode } from 'react'
 
 interface AdminRouteProps {
-  children: React.ReactNode
+  children: ReactNode
 }
 
 export function AdminRoute({ children }: AdminRouteProps) {

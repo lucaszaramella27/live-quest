@@ -26,13 +26,13 @@ export function GradientCard({
   }[animation]
 
   const hoverClasses = hover 
-    ? 'card-hover-fx hover:-translate-y-1 hover:border-sky-300/35 hover:shadow-[0_24px_48px_-34px_rgba(14,165,233,0.78)]' 
+    ? 'card-hover-fx hover:-translate-y-1 hover:border-cyan-200/36 hover:shadow-[0_28px_44px_-30px_rgba(87,215,255,0.68)]' 
     : ''
   
   return (
     <div 
       className={`
-        surface-card reveal-on-scroll p-6
+        surface-card reveal p-6
         transition-all duration-300
         ${hoverClasses}
         ${animationClass}

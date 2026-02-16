@@ -153,7 +153,7 @@ export function PlansPage() {
   ]
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto w-full max-w-7xl space-y-8">
       {isAdmin && (
         <div
           className="surface-card rounded-2xl border p-5"
@@ -193,18 +193,21 @@ export function PlansPage() {
         onClose={() => setToast((current) => ({ ...current, show: false }))}
       />
 
-      <header className="text-center">
-        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-xl border" style={{ borderColor: 'rgba(250, 204, 21, 0.35)', background: 'linear-gradient(130deg, rgba(250, 204, 21, 0.3), rgba(249, 115, 22, 0.22))' }}>
-          <Crown className="h-7 w-7 text-yellow-300" />
-        </div>
+      <section className="surface-card relative overflow-hidden rounded-3xl p-6 text-center sm:p-8">
+        <div className="pointer-events-none absolute inset-0 opacity-90" style={{ background: 'var(--gradient-overlay)' }} />
+        <div className="relative">
+          <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-xl border" style={{ borderColor: 'rgba(250, 204, 21, 0.35)', background: 'linear-gradient(130deg, rgba(250, 204, 21, 0.3), rgba(249, 115, 22, 0.22))' }}>
+            <Crown className="h-7 w-7 text-yellow-300" />
+          </div>
 
-        <h1 className="mb-2 text-4xl font-bold sm:text-5xl">
-          Escolha seu <span className="text-gradient">plano</span>
-        </h1>
-        <p className="mx-auto max-w-2xl text-base sm:text-lg" style={{ color: 'var(--color-text-secondary)' }}>
-          Construa consistencia com sistema de produtividade e desbloqueie camadas premium para acelerar resultados.
-        </p>
-      </header>
+          <h1 className="mb-2 text-4xl font-bold sm:text-5xl">
+            Escolha seu <span className="text-gradient">plano</span>
+          </h1>
+          <p className="mx-auto max-w-2xl text-base sm:text-lg" style={{ color: 'var(--color-text-secondary)' }}>
+            Construa consistencia com sistema de produtividade e desbloqueie camadas premium para acelerar resultados.
+          </p>
+        </div>
+      </section>
 
       <div className="mx-auto inline-flex w-full max-w-sm items-center justify-center gap-2 rounded-xl border p-1" style={{ borderColor: 'rgba(148, 163, 184, 0.28)', background: 'rgba(15, 23, 42, 0.55)' }}>
         <CycleButton active={billingCycle === 'monthly'} onClick={() => setBillingCycle('monthly')} label="Mensal" />

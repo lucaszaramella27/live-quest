@@ -71,16 +71,20 @@ export function TitlesPage() {
   }
 
   return (
-    <div className="space-y-8">
-      <header>
-        <div className="mb-2 flex items-center gap-3">
-          <Medal className="h-7 w-7" style={{ color: 'var(--color-primary)' }} />
-          <h1 className="text-3xl font-bold">Meus titulos</h1>
+    <div className="mx-auto w-full max-w-7xl space-y-8">
+      <GradientCard hover={false} className="relative overflow-hidden p-6 sm:p-8">
+        <div className="pointer-events-none absolute inset-0 opacity-90" style={{ background: 'var(--gradient-overlay)' }} />
+        <div className="relative">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ borderColor: 'rgba(94, 247, 226, 0.3)', color: '#b9fff9' }}>
+            <Medal className="h-4 w-4" />
+            Identity layer
+          </div>
+          <h1 className="text-3xl font-bold sm:text-4xl">Meus titulos</h1>
+          <p className="mt-3 text-sm sm:text-base" style={{ color: 'var(--color-text-secondary)' }}>
+            Desbloqueie e equipe titulos para reforcar sua assinatura dentro do produto.
+          </p>
         </div>
-        <p style={{ color: 'var(--color-text-secondary)' }}>
-          Desbloqueie e equipe titulos especiais para destacar sua identidade.
-        </p>
-      </header>
+      </GradientCard>
 
       <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <MetricCard label="Desbloqueados" value={unlockedTitles.length} />

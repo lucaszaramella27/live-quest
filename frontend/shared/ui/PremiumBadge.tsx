@@ -22,25 +22,22 @@ export function PremiumBadge({
   const getVariantStyle = () => {
     if (variant === 'purple') {
       return {
-        background: 'var(--color-primary)',
-        borderColor: 'var(--color-primary)',
-        color: 'var(--color-text)',
-        opacity: 0.8
+        background: 'rgba(87, 215, 255, 0.2)',
+        borderColor: 'rgba(87, 215, 255, 0.45)',
+        color: '#9cf9ff',
       }
     }
     if (variant === 'pink') {
       return {
-        background: 'var(--color-secondary)',
-        borderColor: 'var(--color-secondary)',
-        color: 'var(--color-text)',
-        opacity: 0.8
+        background: 'rgba(143, 161, 255, 0.2)',
+        borderColor: 'rgba(143, 161, 255, 0.45)',
+        color: '#d9e1ff',
       }
     }
     return {
       background: 'var(--gradient-primary)',
-      borderColor: 'var(--color-primary)',
-      color: 'var(--color-text)',
-      opacity: 0.8
+      borderColor: 'rgba(94, 247, 226, 0.34)',
+      color: '#04131f',
     }
   }
 
@@ -51,12 +48,12 @@ export function PremiumBadge({
         rounded-full border
         font-semibold
         transition-all duration-300
-        hover:scale-105
+        hover:-translate-y-0.5
         ${sizeClasses[size]}
       `}
       style={{
         ...getVariantStyle(),
-        boxShadow: glow ? '0 0 20px var(--glow-color)' : undefined
+        boxShadow: glow ? '0 0 0 1px rgba(94, 247, 226, 0.26), 0 12px 24px -16px var(--glow-color)' : undefined
       }}
     >
       {children}

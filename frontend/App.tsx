@@ -18,6 +18,7 @@ const AchievementsPage = lazy(async () => ({ default: (await import('./features/
 const ThemesPage = lazy(async () => ({ default: (await import('./features/dashboard/pages/ThemesPage')).ThemesPage }))
 const TitlesPage = lazy(async () => ({ default: (await import('./features/dashboard/pages/TitlesPage')).TitlesPage }))
 const ShopPage = lazy(async () => ({ default: (await import('./features/dashboard/pages/ShopPage')).ShopPage }))
+const InventoryPage = lazy(async () => ({ default: (await import('./features/dashboard/pages/InventoryPage')).InventoryPage }))
 const LeaderboardPage = lazy(async () => ({ default: (await import('./features/dashboard/pages/LeaderboardPage')).LeaderboardPage }))
 const TwitchPage = lazy(async () => ({ default: (await import('./features/dashboard/pages/TwitchPage')).TwitchPage }))
 const TwitchCallbackPage = lazy(async () => ({ default: (await import('./features/dashboard/pages/TwitchCallbackPage')).TwitchCallbackPage }))
@@ -125,6 +126,16 @@ function App() {
                   <ProtectedRoute>
                     <DashboardLayout>
                       <ShopPage />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/inventory"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <InventoryPage />
                     </DashboardLayout>
                   </ProtectedRoute>
                 }

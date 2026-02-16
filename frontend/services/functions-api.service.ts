@@ -68,14 +68,18 @@ function normalizeEndpoint(endpoint: string): string {
 
 function getDevFallbackResponse<T>(endpoint: string): T | null {
   const weekRange = getWeekRangeIso()
+  const defaultEquippedItems = { avatar: null, badge: null, theme: null }
   const fallbacks: Record<string, unknown> = {
-    getUserInventory: { purchasedItemIds: [], activePowerups: [] },
+    getUserInventory: { purchasedItemIds: [], activePowerups: [], equippedItems: defaultEquippedItems },
     purchaseShopItem: {
       success: false,
       reason: 'backend_unavailable',
       newBalance: 0,
+      newXP: 0,
+      newLevel: 1,
       purchasedItemIds: [],
       activePowerups: [],
+      equippedItems: defaultEquippedItems,
     },
     getWeeklyChallenges: {
       weekKey: weekRange.weekKey,

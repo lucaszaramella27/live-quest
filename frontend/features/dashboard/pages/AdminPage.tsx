@@ -1,683 +1,461 @@
-﻿import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useAuth } from '@/features/auth/context/AuthContext'
-import { Button, Toast, Input } from '@/shared/ui'
+import { Button, GradientCard, Input, Toast } from '@/shared/ui'
+import {
+  AlertTriangle,
+  CheckCircle,
+  Coins,
+  Copy,
+  Crown,
+  RefreshCw,
+  Shield,
+  TrendingUp,
+  X,
+  Zap,
+} from 'lucide-react'
 import {
   activatePremium,
   deactivatePremium,
   getUserProgress,
-  setUserXP,
+  resetUserProgress,
   setUserCoins,
   setUserLevel,
-  resetUserProgress,
+  setUserXP,
+  type UserProgress,
 } from '@/services/progress.service'
-import { Shield, Crown, X, CheckCircle, Copy, Coins, Zap, TrendingUp, RefreshCw, AlertTriangle } from 'lucide-react'
 import { reportError } from '@/services/logger.service'
 
 export function AdminPage() {
   const { user } = useAuth()
   const [userId, setUserId] = useState('')
   const [loading, setLoading] = useState(false)
-  const [userInfo, setUserInfo] = useState<any>(null)
-  
-  // Input states for admin actions
+  const [userInfo, setUserInfo] = useState<UserProgress | null>(null)
+
   const [xpAmount, setXpAmount] = useState('')
   const [coinsAmount, setCoinsAmount] = useState('')
   const [levelAmount, setLevelAmount] = useState('')
-  
-  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ 
-    show: false, 
-    message: '', 
-    type: 'success' 
+
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({
+    show: false,
+    message: '',
+    type: 'success',
   })
 
-  const handleSearchUser = async () => {
+  if (!user) return null
+
+  async function fetchUserData(targetUserId: string): Promise<UserProgress | null> {
+    return getUserProgress(targetUserId)
+  }
+
+  async function handleSearchUser() {
     if (!userId.trim()) {
-      setToast({
-        show: true,
-        message: '⚠️ Digite um User ID válido',
-        type: 'error'
-      })
+      setToast({ show: true, message: 'Digite um User ID valido.', type: 'error' })
       return
     }
 
     setLoading(true)
     try {
-      const progress = await getUserProgress(userId.trim())
-      
+      const progress = await fetchUserData(userId.trim())
+
       if (!progress) {
-        setToast({
-          show: true,
-          message: 'Usuário não encontrado',
-          type: 'error'
-        })
         setUserInfo(null)
+        setToast({ show: true, message: 'Usuario nao encontrado.', type: 'error' })
       } else {
         setUserInfo(progress)
-        setToast({
-          show: true,
-          message: 'Usuário encontrado!',
-          type: 'success'
-        })
+        setToast({ show: true, message: 'Usuario encontrado.', type: 'success' })
       }
     } catch (error) {
-      reportError('Erro ao buscar usuário:', error)
-      setToast({
-        show: true,
-        message: 'Erro ao buscar usuário',
-        type: 'error'
-      })
+      reportError('admin_page_search_user', error)
       setUserInfo(null)
+      setToast({ show: true, message: 'Erro ao buscar usuario.', type: 'error' })
     } finally {
       setLoading(false)
     }
   }
 
-  const handleActivatePremium = async () => {
+  async function refreshUserInfo() {
     if (!userId.trim()) return
 
     setLoading(true)
     try {
-      await activatePremium(userId.trim(), 'lifetime')
-      
-      // Re-fetch user info
-      const updatedProgress = await getUserProgress(userId.trim())
+      const progress = await fetchUserData(userId.trim())
+      setUserInfo(progress)
+      setToast({ show: true, message: 'Dados atualizados.', type: 'success' })
+    } catch (error) {
+      reportError('admin_page_refresh_user', error)
+      setToast({ show: true, message: 'Erro ao atualizar dados do usuario.', type: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function runWithRefresh(action: () => Promise<void>, successMessage: string, errorMessage: string) {
+    setLoading(true)
+    try {
+      await action()
+      const updatedProgress = await fetchUserData(userId.trim())
       setUserInfo(updatedProgress)
-      
-      setToast({
-        show: true,
-        message: '🎉 Premium ativado com sucesso!',
-        type: 'success'
-      })
+      setToast({ show: true, message: successMessage, type: 'success' })
     } catch (error) {
-      reportError('Erro ao ativar premium:', error)
-      setToast({
-        show: true,
-        message: '❌ Erro ao ativar premium',
-        type: 'error'
-      })
+      reportError('admin_page_action', error)
+      setToast({ show: true, message: errorMessage, type: 'error' })
     } finally {
       setLoading(false)
     }
   }
 
-  const handleDeactivatePremium = async () => {
+  async function handleActivatePremium() {
     if (!userId.trim()) return
-
-    setLoading(true)
-    try {
-      await deactivatePremium(userId.trim())
-      
-      // Re-fetch user info
-      const updatedProgress = await getUserProgress(userId.trim())
-      setUserInfo(updatedProgress)
-      
-      setToast({
-        show: true,
-        message: '✅ Premium removido',
-        type: 'success'
-      })
-    } catch (error) {
-      reportError('Erro ao remover premium:', error)
-      setToast({
-        show: true,
-        message: '❌ Erro ao remover premium',
-        type: 'error'
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSetXP = async () => {
-    if (!userId.trim() || !xpAmount) return
-
-    setLoading(true)
-    try {
-      const success = await setUserXP(userId.trim(), parseInt(xpAmount))
-      
-      if (success) {
-        const updatedProgress = await getUserProgress(userId.trim())
-        setUserInfo(updatedProgress)
-        setXpAmount('')
-        
-        setToast({
-          show: true,
-          message: `✅ XP definido para ${xpAmount}`,
-          type: 'success'
-        })
-      } else {
-        throw new Error('Falha ao definir XP')
-      }
-    } catch (error) {
-      reportError('Erro ao definir XP:', error)
-      setToast({
-        show: true,
-        message: '❌ Erro ao definir XP',
-        type: 'error'
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSetCoins = async () => {
-    if (!userId.trim() || !coinsAmount) return
-
-    setLoading(true)
-    try {
-      const success = await setUserCoins(userId.trim(), parseInt(coinsAmount))
-      
-      if (success) {
-        const updatedProgress = await getUserProgress(userId.trim())
-        setUserInfo(updatedProgress)
-        setCoinsAmount('')
-        
-        setToast({
-          show: true,
-          message: `✅ Moedas definidas para ${coinsAmount}`,
-          type: 'success'
-        })
-      } else {
-        throw new Error('Falha ao definir moedas')
-      }
-    } catch (error) {
-      reportError('Erro ao definir moedas:', error)
-      setToast({
-        show: true,
-        message: '❌ Erro ao definir moedas',
-        type: 'error'
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSetLevel = async () => {
-    if (!userId.trim() || !levelAmount) return
-
-    setLoading(true)
-    try {
-      const success = await setUserLevel(userId.trim(), parseInt(levelAmount))
-      
-      if (success) {
-        const updatedProgress = await getUserProgress(userId.trim())
-        setUserInfo(updatedProgress)
-        setLevelAmount('')
-        
-        setToast({
-          show: true,
-          message: `Nível definido para ${levelAmount}`,
-          type: 'success'
-        })
-      } else {
-        throw new Error('Falha ao definir nível')
-      }
-    } catch (error) {
-      reportError('Erro ao definir nível:', error)
-      setToast({
-        show: true,
-        message: 'Erro ao definir nível',
-        type: 'error'
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleResetProgress = async () => {
-    if (!userId.trim()) return
-    
-    const confirmed = window.confirm(
-      `ATENÇÃO!\n\nTem certeza que deseja RESETAR TODO O PROGRESSO de ${userInfo.userName || 'este usuário'}?\n\nIsso vai:\n- Zerar XP e nível\n- Remover todas as moedas\n- Apagar conquistas e títulos\n- Resetar XP semanal/mensal\n\nO status Premium será mantido.\n\nEsta ação NÃO PODE SER DESFEITA!`
+    await runWithRefresh(
+      async () => {
+        await activatePremium(userId.trim(), 'lifetime')
+      },
+      'Premium ativado com sucesso.',
+      'Erro ao ativar premium.'
     )
-    
+  }
+
+  async function handleDeactivatePremium() {
+    if (!userId.trim()) return
+    await runWithRefresh(
+      async () => {
+        await deactivatePremium(userId.trim())
+      },
+      'Premium removido com sucesso.',
+      'Erro ao remover premium.'
+    )
+  }
+
+  async function handleSetXP() {
+    if (!userId.trim() || !xpAmount) return
+    await runWithRefresh(
+      async () => {
+        const success = await setUserXP(userId.trim(), parseInt(xpAmount, 10))
+        if (!success) throw new Error('set_user_xp_failed')
+        setXpAmount('')
+      },
+      `XP definido para ${xpAmount}.`,
+      'Erro ao definir XP.'
+    )
+  }
+
+  async function handleSetCoins() {
+    if (!userId.trim() || !coinsAmount) return
+    await runWithRefresh(
+      async () => {
+        const success = await setUserCoins(userId.trim(), parseInt(coinsAmount, 10))
+        if (!success) throw new Error('set_user_coins_failed')
+        setCoinsAmount('')
+      },
+      `Moedas definidas para ${coinsAmount}.`,
+      'Erro ao definir moedas.'
+    )
+  }
+
+  async function handleSetLevel() {
+    if (!userId.trim() || !levelAmount) return
+    await runWithRefresh(
+      async () => {
+        const success = await setUserLevel(userId.trim(), parseInt(levelAmount, 10))
+        if (!success) throw new Error('set_user_level_failed')
+        setLevelAmount('')
+      },
+      `Nivel definido para ${levelAmount}.`,
+      'Erro ao definir nivel.'
+    )
+  }
+
+  async function handleResetProgress() {
+    if (!userId.trim()) return
+
+    const confirmed = window.confirm(
+      `ATENCAO\n\nTem certeza que deseja resetar todo o progresso de ${userInfo?.userName || 'este usuario'}?\n\nIsso vai zerar XP, nivel, moedas, conquistas e titulos.\nO status Premium sera mantido.\n\nEsta acao nao pode ser desfeita.`
+    )
     if (!confirmed) return
 
-    setLoading(true)
-    try {
-      const success = await resetUserProgress(userId.trim())
-      
-      if (success) {
-        const updatedProgress = await getUserProgress(userId.trim())
-        setUserInfo(updatedProgress)
-        
-        setToast({
-          show: true,
-          message: '✅ Progresso resetado com sucesso',
-          type: 'success'
-        })
-      } else {
-        throw new Error('Falha ao resetar progresso')
-      }
-    } catch (error) {
-      reportError('Erro ao resetar progresso:', error)
-      setToast({
-        show: true,
-        message: '❌ Erro ao resetar progresso',
-        type: 'error'
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const refreshUserInfo = async () => {
-    if (!userId.trim()) return
-    
-    setLoading(true)
-    try {
-      const progress = await getUserProgress(userId.trim())
-      setUserInfo(progress)
-      setToast({
-        show: true,
-        message: '✅ Dados atualizados!',
-        type: 'success'
-      })
-    } catch (error) {
-      reportError('Erro ao atualizar:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (!user) {
-    return null
+    await runWithRefresh(
+      async () => {
+        const success = await resetUserProgress(userId.trim())
+        if (!success) throw new Error('reset_user_progress_failed')
+      },
+      'Progresso resetado com sucesso.',
+      'Erro ao resetar progresso.'
+    )
   }
 
   return (
-    <div className="max-w-6xl mx-auto">
-      {/* Toast */}
+    <div className="mx-auto w-full max-w-7xl space-y-8">
       <Toast
         show={toast.show}
         message={toast.message}
         type={toast.type}
-        onClose={() => setToast({ ...toast, show: false })}
+        onClose={() => setToast((current) => ({ ...current, show: false }))}
       />
 
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div 
-              className="w-14 h-14 rounded-xl flex items-center justify-center"
-              style={{ 
-                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                boxShadow: '0 4px 20px rgba(239, 68, 68, 0.3)'
-              }}
-            >
-              <Shield className="w-7 h-7 text-white" />
+      <GradientCard hover={false} className="relative overflow-hidden p-6 sm:p-8">
+        <div className="pointer-events-none absolute inset-0 opacity-90" style={{ background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.14), rgba(248, 113, 113, 0.08))' }} />
+        <div className="relative flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ borderColor: 'rgba(248, 113, 113, 0.3)', color: '#fecaca' }}>
+              <Shield className="h-4 w-4" />
+              Admin control
             </div>
-            <div>
-              <h1 className="text-3xl font-bold" style={{ color: 'var(--color-text)' }}>
-                Painel Admin Completo
-              </h1>
-              <p style={{ color: 'var(--color-text-secondary)' }}>
-                Gerencie usuários, XP, moedas, níveis e premium
-              </p>
-            </div>
+            <h1 className="text-3xl font-bold sm:text-4xl">Painel administrativo</h1>
+            <p className="mt-3 text-sm sm:text-base" style={{ color: 'var(--color-text-secondary)' }}>
+              Gerencie premium, XP, moedas, niveis e reset de progresso dos usuarios.
+            </p>
           </div>
+
           {userInfo && (
-            <Button
-              onClick={refreshUserInfo}
-              disabled={loading}
-              variant="ghost"
-              icon={<RefreshCw className="w-4 h-4" />}
-            >
+            <Button onClick={() => void refreshUserInfo()} disabled={loading} variant="ghost" icon={<RefreshCw className="h-4 w-4" />}>
               Atualizar
             </Button>
           )}
         </div>
-      </div>
+      </GradientCard>
 
-      {/* Warning Banner */}
-      <div 
-        className="mb-8 p-6 rounded-xl border"
-        style={{
-          background: 'rgba(239, 68, 68, 0.1)',
-          borderColor: 'rgba(239, 68, 68, 0.3)'
-        }}
-      >
-        <div className="flex items-start gap-3">
-          <Shield className="w-5 h-5 mt-0.5" style={{ color: '#ef4444' }} />
+      <div className="glass rounded-2xl border p-5">
+        <div className="mb-3 flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 h-5 w-5 text-rose-300" />
           <div>
-            <h3 className="font-bold mb-1" style={{ color: '#ef4444' }}>
-              Área Administrativa - Acesso Restrito
-            </h3>
+            <p className="font-semibold text-rose-300">Area administrativa restrita</p>
             <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-              Esta página permite controle total sobre usuários. Use com extrema responsabilidade e cuidado.
+              Acoes desta tela possuem impacto direto no ambiente e devem ser executadas com cuidado.
             </p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Search & User Info */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Search User */}
-          <div 
-            className="p-6 rounded-xl border"
-            style={{ 
-              background: 'var(--color-background-secondary)',
-              borderColor: 'rgba(255, 255, 255, 0.1)'
-            }}
-          >
-            <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
-              🔍 Buscar Usuário
-            </h2>
-            
-            <div className="flex gap-3">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[2fr_1fr]">
+        <div className="space-y-6">
+          <GradientCard hover={false}>
+            <h2 className="mb-4 text-xl font-bold">Buscar usuario</h2>
+            <div className="flex flex-col gap-3 sm:flex-row">
               <div className="flex-1">
                 <Input
                   label="User ID"
                   value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
-                  placeholder="Cole o User ID aqui..."
+                  onChange={(event) => setUserId(event.target.value)}
+                  placeholder="Cole o user id aqui"
                   disabled={loading}
                 />
               </div>
               <div className="flex items-end">
-                <Button
-                  onClick={handleSearchUser}
-                  disabled={loading || !userId.trim()}
-                  variant="primary"
-                  style={{ minWidth: '120px' }}
-                >
+                <Button onClick={() => void handleSearchUser()} disabled={loading || !userId.trim()} className="w-full sm:w-auto">
                   {loading ? 'Buscando...' : 'Buscar'}
                 </Button>
               </div>
             </div>
-          </div>
+          </GradientCard>
 
-          {/* User Info Card */}
           {userInfo && (
-            <div 
-              className="p-6 rounded-xl border"
-              style={{ 
-                background: 'var(--color-background-secondary)',
-                borderColor: 'rgba(255, 255, 255, 0.1)'
-              }}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>
-                  Informações do Usuário
-                </h2>
-                {userInfo.isPremium && (
-                  <Crown className="w-6 h-6 text-yellow-500 animate-pulse" />
-                )}
+            <GradientCard hover={false}>
+              <div className="mb-5 flex items-center justify-between gap-3">
+                <h2 className="text-xl font-bold">Informacoes do usuario</h2>
+                {userInfo.isPremium && <Crown className="h-6 w-6 text-amber-300" />}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-lg" style={{ background: 'rgba(139, 92, 246, 0.1)' }}>
-                  <p className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>Nome</p>
-                  <p className="font-bold" style={{ color: 'var(--color-text)' }}>
-                    {userInfo.userName || 'Não informado'}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-lg" style={{ background: 'rgba(59, 130, 246, 0.1)' }}>
-                  <p className="text-xs mb-1" style={{ color: 'var(--color-text-secondary)' }}>Nível</p>
-                  <p className="font-bold text-2xl" style={{ color: '#3b82f6' }}>
-                    {userInfo.level}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-lg" style={{ background: 'rgba(236, 72, 153, 0.1)' }}>
-                  <div className="flex items-center gap-2">
-                    <Zap className="w-4 h-4" style={{ color: '#ec4899' }} />
-                    <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>XP Total</p>
-                  </div>
-                  <p className="font-bold text-2xl" style={{ color: '#ec4899' }}>
-                    {userInfo.xp}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-lg" style={{ background: 'rgba(251, 191, 36, 0.1)' }}>
-                  <div className="flex items-center gap-2">
-                    <Coins className="w-4 h-4 text-amber-500" />
-                    <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Moedas</p>
-                  </div>
-                  <p className="font-bold text-2xl text-amber-500">
-                    {userInfo.coins}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-lg col-span-2" style={{ background: 'rgba(34, 197, 94, 0.1)' }}>
-                  <p className="text-xs mb-2" style={{ color: 'var(--color-text-secondary)' }}>XP Semanal / Mensal</p>
-                  <div className="flex gap-4">
-                    <p className="font-bold" style={{ color: '#22c55e' }}>
-                      📅 {userInfo.weeklyXP} XP
-                    </p>
-                    <p className="font-bold" style={{ color: '#22c55e' }}>
-                      📆 {userInfo.monthlyXP} XP
-                    </p>
-                  </div>
-                </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <InfoTile label="Nome" value={userInfo.userName || 'Nao informado'} />
+                <InfoTile label="Nivel" value={userInfo.level} valueColor="#60a5fa" />
+                <InfoTile label="XP total" value={userInfo.xp} valueColor="#f472b6" icon={<Zap className="h-4 w-4 text-pink-300" />} />
+                <InfoTile label="Moedas" value={userInfo.coins} valueColor="#facc15" icon={<Coins className="h-4 w-4 text-amber-300" />} />
+                <InfoTile
+                  label="XP semanal / mensal"
+                  value={`${userInfo.weeklyXP} / ${userInfo.monthlyXP}`}
+                  helper="acumulado"
+                  className="sm:col-span-2"
+                />
               </div>
-            </div>
+            </GradientCard>
           )}
 
-          {/* Admin Actions */}
           {userInfo && (
-            <div 
-              className="p-6 rounded-xl border"
-              style={{ 
-                background: 'var(--color-background-secondary)',
-                borderColor: 'rgba(255, 255, 255, 0.1)'
-              }}
-            >
-              <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--color-text)' }}>
-                ⚙️ Gerenciar Recursos
-              </h2>
+            <GradientCard hover={false}>
+              <h2 className="mb-5 text-xl font-bold">Gerenciar recursos</h2>
 
-              <div className="space-y-4">
-                {/* XP Management */}
-                <div>
-                  <label className="text-sm font-semibold mb-2 block" style={{ color: 'var(--color-text-secondary)' }}>
-                    <Zap className="w-4 h-4 inline mr-1" style={{ color: '#ec4899' }} />
-                    Definir XP
-                  </label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={xpAmount}
-                      onChange={(e) => setXpAmount(e.target.value)}
-                      placeholder="Ex: 5000"
-                      type="number"
-                      disabled={loading}
-                    />
-                    <Button
-                      onClick={handleSetXP}
-                      disabled={loading || !xpAmount}
-                      variant="primary"
-                      style={{ background: '#ec4899', minWidth: '100px' }}
-                    >
-                      Definir
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Coins Management */}
-                <div>
-                  <label className="text-sm font-semibold mb-2 block" style={{ color: 'var(--color-text-secondary)' }}>
-                    <Coins className="w-4 h-4 inline mr-1 text-amber-500" />
-                    Definir Moedas
-                  </label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={coinsAmount}
-                      onChange={(e) => setCoinsAmount(e.target.value)}
-                      placeholder="Ex: 1000"
-                      type="number"
-                      disabled={loading}
-                    />
-                    <Button
-                      onClick={handleSetCoins}
-                      disabled={loading || !coinsAmount}
-                      variant="primary"
-                      style={{ background: '#f59e0b', minWidth: '100px' }}
-                    >
-                      Definir
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Level Management */}
-                <div>
-                  <label className="text-sm font-semibold mb-2 block" style={{ color: 'var(--color-text-secondary)' }}>
-                    <TrendingUp className="w-4 h-4 inline mr-1" style={{ color: '#3b82f6' }} />
-                    Definir Nível
-                  </label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={levelAmount}
-                      onChange={(e) => setLevelAmount(e.target.value)}
-                      placeholder="Ex: 50"
-                      type="number"
-                      disabled={loading}
-                    />
-                    <Button
-                      onClick={handleSetLevel}
-                      disabled={loading || !levelAmount}
-                      variant="primary"
-                      style={{ background: '#3b82f6', minWidth: '100px' }}
-                    >
-                      Definir
-                    </Button>
-                  </div>
-                </div>
+              <div className="space-y-5">
+                <ActionField
+                  label="Definir XP"
+                  icon={<Zap className="h-4 w-4 text-pink-300" />}
+                  value={xpAmount}
+                  onChange={setXpAmount}
+                  placeholder="Ex: 5000"
+                  onApply={() => void handleSetXP()}
+                  buttonText="Definir"
+                  loading={loading}
+                />
+                <ActionField
+                  label="Definir moedas"
+                  icon={<Coins className="h-4 w-4 text-amber-300" />}
+                  value={coinsAmount}
+                  onChange={setCoinsAmount}
+                  placeholder="Ex: 1000"
+                  onApply={() => void handleSetCoins()}
+                  buttonText="Definir"
+                  loading={loading}
+                />
+                <ActionField
+                  label="Definir nivel"
+                  icon={<TrendingUp className="h-4 w-4 text-cyan-200" />}
+                  value={levelAmount}
+                  onChange={setLevelAmount}
+                  placeholder="Ex: 50"
+                  onApply={() => void handleSetLevel()}
+                  buttonText="Definir"
+                  loading={loading}
+                />
               </div>
-            </div>
+            </GradientCard>
           )}
         </div>
 
-        {/* Right Column - Quick Actions */}
         <div className="space-y-6">
-          {/* Your Admin ID */}
-          <div 
-            className="p-6 rounded-xl border"
-            style={{
-              background: 'rgba(59, 130, 246, 0.05)',
-              borderColor: 'rgba(59, 130, 246, 0.2)'
-            }}
-          >
-            <h3 className="font-bold mb-3 flex items-center gap-2" style={{ color: '#3b82f6' }}>
-              <CheckCircle className="w-5 h-5" />
+          <GradientCard hover={false}>
+            <h3 className="mb-3 flex items-center gap-2 font-bold text-cyan-200">
+              <CheckCircle className="h-5 w-5" />
               Seu Admin ID
             </h3>
-            <code 
-              className="block p-3 rounded-lg font-mono text-xs break-all"
-              style={{ 
-                background: 'var(--color-background-secondary)',
-                color: 'var(--color-text)',
-                border: '1px solid rgba(255, 255, 255, 0.1)'
-              }}
-            >
+            <code className="block rounded-lg border p-3 text-xs" style={{ borderColor: 'rgba(139, 161, 203, 0.24)', background: 'rgba(8, 17, 33, 0.66)', color: 'var(--color-text)' }}>
               {user.id}
             </code>
             <Button
               onClick={() => {
                 if (user.id) {
-                  navigator.clipboard.writeText(user.id)
-                  setToast({
-                    show: true,
-                    message: '✅ ID copiado!',
-                    type: 'success'
-                  })
+                  void navigator.clipboard.writeText(user.id)
+                  setToast({ show: true, message: 'ID copiado.', type: 'success' })
                 }
               }}
               variant="ghost"
-              icon={<Copy className="w-4 h-4" />}
-              className="w-full mt-3"
-              style={{ borderColor: 'rgba(59, 130, 246, 0.3)' }}
+              icon={<Copy className="h-4 w-4" />}
+              className="mt-3 w-full"
             >
               Copiar ID
             </Button>
-          </div>
+          </GradientCard>
 
-          {/* Premium Actions */}
           {userInfo && (
-            <div 
-              className="p-6 rounded-xl border"
-              style={{
-                background: 'rgba(251, 191, 36, 0.05)',
-                borderColor: 'rgba(251, 191, 36, 0.2)'
-              }}
-            >
-              <h3 className="font-bold mb-4 flex items-center gap-2" style={{ color: '#fbbf24' }}>
-                <Crown className="w-5 h-5" />
+            <GradientCard hover={false}>
+              <h3 className="mb-4 flex items-center gap-2 font-bold text-amber-300">
+                <Crown className="h-5 w-5" />
                 Premium
               </h3>
-              
+
               {!userInfo.isPremium ? (
                 <Button
-                  onClick={handleActivatePremium}
+                  onClick={() => void handleActivatePremium()}
                   disabled={loading}
-                  variant="primary"
                   className="w-full"
-                  style={{ 
-                    background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
-                    color: 'white'
-                  }}
-                  icon={<Crown className="w-4 h-4" />}
+                  style={{ background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)', borderColor: '#f59e0b', color: '#ffffff' }}
+                  icon={<Crown className="h-4 w-4" />}
                 >
-                  Ativar Premium
+                  Ativar premium
                 </Button>
               ) : (
-                <div>
-                  <div className="p-3 rounded-lg mb-3 text-center" style={{ background: 'rgba(251, 191, 36, 0.2)' }}>
-                    <Crown className="w-8 h-8 mx-auto mb-2 text-yellow-500" />
-                    <p className="font-bold text-yellow-500">Premium Ativo</p>
+                <div className="space-y-3">
+                  <div className="rounded-lg border p-3 text-center" style={{ borderColor: 'rgba(245, 158, 11, 0.35)', background: 'rgba(120, 53, 15, 0.25)' }}>
+                    <Crown className="mx-auto mb-1 h-7 w-7 text-amber-300" />
+                    <p className="font-bold text-amber-200">Premium ativo</p>
                   </div>
                   <Button
-                    onClick={handleDeactivatePremium}
+                    onClick={() => void handleDeactivatePremium()}
                     disabled={loading}
                     variant="ghost"
-                    className="w-full border-2"
-                    style={{ 
-                      borderColor: 'rgba(239, 68, 68, 0.5)',
-                      color: '#ef4444'
-                    }}
-                    icon={<X className="w-4 h-4" />}
+                    className="w-full border"
+                    style={{ borderColor: 'rgba(248, 113, 113, 0.5)', color: '#fca5a5' }}
+                    icon={<X className="h-4 w-4" />}
                   >
-                    Remover Premium
+                    Remover premium
                   </Button>
                 </div>
               )}
-            </div>
+            </GradientCard>
           )}
 
-          {/* Danger Zone */}
           {userInfo && (
-            <div 
-              className="p-6 rounded-xl border"
-              style={{
-                background: 'rgba(239, 68, 68, 0.05)',
-                borderColor: 'rgba(239, 68, 68, 0.3)'
-              }}
-            >
-              <h3 className="font-bold mb-2 flex items-center gap-2" style={{ color: '#ef4444' }}>
-                <AlertTriangle className="w-5 h-5" />
-                Zona de Perigo
+            <GradientCard hover={false}>
+              <h3 className="mb-2 flex items-center gap-2 font-bold text-rose-300">
+                <AlertTriangle className="h-5 w-5" />
+                Zona de risco
               </h3>
-              <p className="text-xs mb-4" style={{ color: 'var(--color-text-secondary)' }}>
-                Ações irreversíveis
+              <p className="mb-4 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                Acao irreversivel.
               </p>
-              
               <Button
-                onClick={handleResetProgress}
+                onClick={() => void handleResetProgress()}
                 disabled={loading}
                 variant="ghost"
-                className="w-full border-2"
-                style={{ 
-                  borderColor: 'rgba(239, 68, 68, 0.5)',
-                  color: '#ef4444'
-                }}
-                icon={<RefreshCw className="w-4 h-4" />}
+                className="w-full border"
+                style={{ borderColor: 'rgba(248, 113, 113, 0.5)', color: '#fca5a5' }}
+                icon={<RefreshCw className="h-4 w-4" />}
               >
-                Resetar Progresso
+                Resetar progresso
               </Button>
-            </div>
+            </GradientCard>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+interface InfoTileProps {
+  label: string
+  value: string | number
+  helper?: string
+  icon?: ReactNode
+  valueColor?: string
+  className?: string
+}
+
+function InfoTile({ label, value, helper, icon, valueColor, className = '' }: InfoTileProps) {
+  return (
+    <div className={`glass rounded-lg border p-4 ${className}`}>
+      <div className="mb-1 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--color-text-secondary)' }}>
+        {icon}
+        {label}
+      </div>
+      <p className="text-2xl font-bold" style={{ color: valueColor || 'var(--color-text)' }}>
+        {value}
+      </p>
+      {helper && (
+        <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+          {helper}
+        </p>
+      )}
+    </div>
+  )
+}
+
+interface ActionFieldProps {
+  label: string
+  icon: ReactNode
+  value: string
+  onChange: (value: string) => void
+  placeholder: string
+  onApply: () => void
+  buttonText: string
+  loading: boolean
+}
+
+function ActionField({ label, icon, value, onChange, placeholder, onApply, buttonText, loading }: ActionFieldProps) {
+  return (
+    <div>
+      <label className="mb-2 flex items-center gap-2 text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+        {icon}
+        {label}
+      </label>
+      <div className="flex gap-2">
+        <Input
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          type="number"
+          disabled={loading}
+        />
+        <Button onClick={onApply} disabled={loading || !value} size="sm" className="min-w-[92px]">
+          {buttonText}
+        </Button>
       </div>
     </div>
   )

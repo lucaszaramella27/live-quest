@@ -1,8 +1,8 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { CheckCircle, Loader2, Twitch, XCircle } from 'lucide-react'
 import { connectTwitchWithCode } from '@/services/twitch.service'
 import { reportError } from '@/services/logger.service'
-import { Twitch, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 
 export function TwitchCallbackPage() {
   const [searchParams] = useSearchParams()
@@ -19,20 +19,20 @@ export function TwitchCallbackPage() {
 
       if (error) {
         setStatus('error')
-        setErrorMessage(errorDescription || 'Autorizacao negada')
+        setErrorMessage(errorDescription || 'Autorizacao negada.')
         return
       }
 
       if (!code) {
         setStatus('error')
-        setErrorMessage('Codigo de autorizacao nao encontrado')
+        setErrorMessage('Codigo de autorizacao nao encontrado.')
         return
       }
 
       const savedState = localStorage.getItem('twitch_auth_state')
       if (state !== savedState) {
         setStatus('error')
-        setErrorMessage('Estado de autenticacao invalido')
+        setErrorMessage('Estado de autenticacao invalido.')
         return
       }
 
@@ -44,7 +44,7 @@ export function TwitchCallbackPage() {
         setStatus('success')
         setTimeout(() => navigate('/twitch'), 1800)
       } catch (err) {
-        reportError('Erro no callback Twitch:', err)
+        reportError('twitch_callback_connect', err)
         setStatus('error')
         setErrorMessage('Erro ao conectar com a Twitch. Tente novamente.')
       }
@@ -54,48 +54,55 @@ export function TwitchCallbackPage() {
   }, [navigate, searchParams])
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--color-background)' }}>
-      <div className="text-center p-8 max-w-md">
-        <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-[#9146FF]/20 flex items-center justify-center">
-          {status === 'loading' && <Loader2 className="w-10 h-10 text-[#9146FF] animate-spin" />}
-          {status === 'success' && <CheckCircle className="w-10 h-10 text-green-500" />}
-          {status === 'error' && <XCircle className="w-10 h-10 text-red-500" />}
-        </div>
+    <div className="relative flex min-h-screen items-center justify-center px-4" style={{ background: 'var(--color-background)' }}>
+      <div className="pointer-events-none absolute inset-0 ambient-grid opacity-[0.05]" />
 
-        {status === 'loading' && (
-          <>
-            <h1 className="text-2xl font-bold mb-2">Conectando com a Twitch...</h1>
-            <p className="text-gray-400">Aguarde enquanto configuramos sua integracao</p>
-          </>
-        )}
+      <div className="surface-card relative w-full max-w-md rounded-3xl border p-8 text-center">
+        <div className="pointer-events-none absolute inset-0 rounded-3xl opacity-80" style={{ background: 'var(--gradient-overlay)' }} />
 
-        {status === 'success' && (
-          <>
-            <h1 className="text-2xl font-bold mb-2 text-green-500">Conectado com sucesso!</h1>
-            <p className="text-gray-400">Sua conta foi vinculada. Redirecionando...</p>
-          </>
-        )}
+        <div className="relative">
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full border" style={{ borderColor: 'rgba(145, 70, 255, 0.35)', background: 'rgba(145, 70, 255, 0.2)' }}>
+            {status === 'loading' && <Loader2 className="h-10 w-10 animate-spin text-[#9146FF]" />}
+            {status === 'success' && <CheckCircle className="h-10 w-10 text-emerald-400" />}
+            {status === 'error' && <XCircle className="h-10 w-10 text-rose-400" />}
+          </div>
 
-        {status === 'error' && (
-          <>
-            <h1 className="text-2xl font-bold mb-2 text-red-500">Erro na conexao</h1>
-            <p className="text-gray-400 mb-6">{errorMessage}</p>
-            <button
-              onClick={() => navigate('/twitch')}
-              className="px-6 py-3 bg-[#9146FF] hover:bg-[#7c3aed] rounded-xl font-semibold transition-colors"
-            >
-              Voltar e tentar novamente
-            </button>
-          </>
-        )}
+          {status === 'loading' && (
+            <>
+              <h1 className="mb-2 text-2xl font-bold">Conectando com a Twitch...</h1>
+              <p style={{ color: 'var(--color-text-secondary)' }}>Aguarde enquanto finalizamos a integracao.</p>
+            </>
+          )}
 
-        <div className="mt-8 flex items-center justify-center gap-2 text-sm text-gray-500">
-          <Twitch className="w-4 h-4" />
-          <span>Integracao oficial com Twitch</span>
+          {status === 'success' && (
+            <>
+              <h1 className="mb-2 text-2xl font-bold text-emerald-400">Conexao concluida</h1>
+              <p style={{ color: 'var(--color-text-secondary)' }}>Sua conta foi vinculada. Redirecionando...</p>
+            </>
+          )}
+
+          {status === 'error' && (
+            <>
+              <h1 className="mb-2 text-2xl font-bold text-rose-400">Erro de conexao</h1>
+              <p className="mb-6" style={{ color: 'var(--color-text-secondary)' }}>
+                {errorMessage}
+              </p>
+              <button
+                onClick={() => navigate('/twitch')}
+                className="rounded-xl border px-6 py-3 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5"
+                style={{ background: '#9146FF', borderColor: '#7c3aed', color: '#ffffff' }}
+              >
+                Voltar e tentar novamente
+              </button>
+            </>
+          )}
+
+          <div className="mt-8 flex items-center justify-center gap-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+            <Twitch className="h-4 w-4" />
+            <span>Integracao oficial Twitch OAuth</span>
+          </div>
         </div>
       </div>
     </div>
   )
 }
-
-

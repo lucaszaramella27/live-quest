@@ -30,20 +30,20 @@ interface ApplyThemeOptions {
 export const THEMES: Theme[] = [
   {
     id: 'default',
-    name: 'Neon Purple',
-    description: 'O classico roxo neon que voce conhece',
+    name: 'Aether Dark',
+    description: 'Dark SaaS moderno com cyan e electric blue',
     isPremium: false,
     colors: {
-      primary: '#a855f7',
-      secondary: '#ec4899',
-      accent: '#8b5cf6',
-      background: '#0a0a0f',
-      backgroundSecondary: '#1a1625',
-      backgroundTertiary: '#252134',
-      text: '#ffffff',
-      textSecondary: '#9ca3af',
-      gradient: 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
-      glow: 'rgba(168, 85, 247, 0.5)'
+      primary: '#5ef7e2',
+      secondary: '#8fa1ff',
+      accent: '#57d7ff',
+      background: '#050913',
+      backgroundSecondary: '#0b1322',
+      backgroundTertiary: '#111d33',
+      text: '#e7efff',
+      textSecondary: '#9aaccc',
+      gradient: 'linear-gradient(125deg, #5ef7e2 0%, #57d7ff 44%, #8fa1ff 100%)',
+      glow: 'rgba(94, 247, 226, 0.38)'
     },
     effects: {
       particles: false,
@@ -122,20 +122,20 @@ export const THEMES: Theme[] = [
   },
   {
     id: 'dark',
-    name: 'Dark Modern',
-    description: 'Preto e cinza moderno com detalhes azuis',
+    name: 'Graphite Core',
+    description: 'Visual enterprise dark com acento azul frio',
     isPremium: false,
     colors: {
-      primary: '#3b82f6',
+      primary: '#6bc4ff',
       secondary: '#60a5fa',
-      accent: '#2563eb',
-      background: '#0a0a0a',
-      backgroundSecondary: '#141414',
-      backgroundTertiary: '#1f1f1f',
-      text: '#fafafa',
-      textSecondary: '#737373',
-      gradient: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-      glow: 'rgba(59, 130, 246, 0.15)'
+      accent: '#4f7bf7',
+      background: '#080d16',
+      backgroundSecondary: '#0f1726',
+      backgroundTertiary: '#172235',
+      text: '#edf4ff',
+      textSecondary: '#94a8c8',
+      gradient: 'linear-gradient(135deg, #6bc4ff 0%, #60a5fa 48%, #4f7bf7 100%)',
+      glow: 'rgba(99, 179, 237, 0.24)'
     },
     effects: {
       particles: false,
@@ -168,20 +168,20 @@ export const THEMES: Theme[] = [
   },
   {
     id: 'ocean',
-    name: 'Ocean Breeze',
-    description: 'Tons aquaticos calmantes',
+    name: 'Arctic Flux',
+    description: 'Paleta fria com contraste alto para foco',
     isPremium: false,
     colors: {
-      primary: '#06b6d4',
-      secondary: '#0ea5e9',
-      accent: '#3b82f6',
-      background: '#0c1821',
-      backgroundSecondary: '#1b2838',
-      backgroundTertiary: '#2d3f52',
-      text: '#f0f9ff',
-      textSecondary: '#bae6fd',
-      gradient: 'linear-gradient(135deg, #06b6d4 0%, #0ea5e9 50%, #3b82f6 100%)',
-      glow: 'rgba(6, 182, 212, 0.4)'
+      primary: '#39e5ff',
+      secondary: '#2ec5ff',
+      accent: '#5f92ff',
+      background: '#07121d',
+      backgroundSecondary: '#0d1c2b',
+      backgroundTertiary: '#163047',
+      text: '#effbff',
+      textSecondary: '#9fd3eb',
+      gradient: 'linear-gradient(135deg, #39e5ff 0%, #2ec5ff 48%, #5f92ff 100%)',
+      glow: 'rgba(57, 229, 255, 0.34)'
     },
     effects: {
       particles: false,

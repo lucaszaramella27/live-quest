@@ -26,33 +26,33 @@ interface FeatureCard {
 const features: FeatureCard[] = [
   {
     icon: Target,
-    title: 'Metas que viram rotina',
-    description: 'Transforme objetivos grandes em missões semanais fáceis de executar.',
+    title: 'Plano semanal claro',
+    description: 'Quebre objetivos grandes em entregas pequenas que cabem na sua rotina de live.',
   },
   {
     icon: CalendarCheck2,
-    title: 'Calendário inteligente',
-    description: 'Organize sua agenda de lives com foco em consistência e previsibilidade.',
+    title: 'Calendario de execucao',
+    description: 'Organize stream, criacao de conteudo e tarefas de bastidor em um fluxo unico.',
   },
   {
     icon: Zap,
-    title: 'Gamificação real',
-    description: 'XP, níveis e recompensas para manter disciplina diária sem perder diversão.',
+    title: 'Gamificacao util',
+    description: 'XP, streaks e recompensas para manter constancia sem virar distração.',
   },
   {
     icon: BarChart3,
-    title: 'Painel de performance',
-    description: 'Entenda o que está funcionando com métricas claras em tempo real.',
+    title: 'Painel de progresso',
+    description: 'Visualize o que esta funcionando e ajuste sua estrategia com dados simples.',
   },
   {
     icon: Trophy,
-    title: 'Conquistas e títulos',
-    description: 'Desbloqueie progresso visível e aumente motivação a cada etapa.',
+    title: 'Conquistas e titulos',
+    description: 'Transforme consistencia em marcos visiveis para manter ritmo de crescimento.',
   },
   {
     icon: Crown,
-    title: 'Modo premium',
-    description: 'Recursos avançados para quem quer acelerar crescimento de verdade.',
+    title: 'Camada premium',
+    description: 'Recursos avancados para criadores que querem escalar com previsibilidade.',
   },
 ]
 
@@ -69,17 +69,23 @@ export function LandingPage() {
   return (
     <div className="relative min-h-screen overflow-hidden">
       <div className="pointer-events-none absolute inset-0 ambient-grid opacity-[0.06]" />
-      <div className="pointer-events-none absolute -top-32 left-8 h-80 w-80 rounded-full blur-3xl" style={{ background: 'rgba(14, 165, 233, 0.24)' }} />
-      <div className="pointer-events-none absolute right-0 top-20 h-72 w-72 rounded-full blur-3xl" style={{ background: 'rgba(249, 115, 22, 0.22)' }} />
+      <div
+        className="pointer-events-none absolute -top-36 left-0 h-[420px] w-[420px] rounded-full blur-3xl"
+        style={{ background: 'rgba(94, 247, 226, 0.2)' }}
+      />
+      <div
+        className="pointer-events-none absolute right-0 top-24 h-[360px] w-[360px] rounded-full blur-3xl"
+        style={{ background: 'rgba(143, 161, 255, 0.18)' }}
+      />
 
-      <header className="relative z-20">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-6 md:px-8">
-          <button className="flex items-center gap-3" onClick={() => navigate('/')}>
-            <img src="/logo.png" alt="LiveQuest Logo" className="h-12 w-12 rounded-xl" />
+      <header className="relative z-20 border-b border-white/10">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-5 md:px-8">
+          <button className="flex items-center gap-3" onClick={() => navigate('/')} aria-label="Ir para inicio">
+            <img src="/logo.png" alt="LiveQuest Logo" className="h-11 w-11 rounded-xl" />
             <div className="text-left">
-              <p className="text-xl font-bold text-gradient">LiveQuest</p>
+              <p className="text-lg font-bold text-gradient sm:text-xl">LiveQuest</p>
               <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                Build consistency. Grow faster.
+                Build consistency. Ship growth.
               </p>
             </div>
           </button>
@@ -89,40 +95,40 @@ export function LandingPage() {
               Entrar
             </Button>
             <Button onClick={() => navigate('/login')} icon={<ArrowRight className="h-4 w-4" />}>
-              Começar
+              Comecar
             </Button>
           </div>
         </div>
       </header>
 
       <main className="relative z-10 pb-20">
-        <section className="mx-auto grid w-full max-w-7xl items-center gap-12 px-4 pb-16 pt-6 md:px-8 lg:grid-cols-[1.15fr_1fr] lg:pt-10">
-          <div>
+        <section className="mx-auto grid w-full max-w-7xl items-center gap-10 px-4 pb-14 pt-10 md:px-8 lg:grid-cols-[1.08fr_0.92fr] lg:pt-14">
+          <div className="reveal">
             <div
-              className="mb-7 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-wider"
+              className="mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.14em]"
               style={{
-                background: 'rgba(14, 165, 233, 0.12)',
-                borderColor: 'rgba(125, 211, 252, 0.32)',
-                color: '#bae6fd',
+                background: 'rgba(87, 215, 255, 0.12)',
+                borderColor: 'rgba(87, 215, 255, 0.3)',
+                color: '#b7fff7',
               }}
             >
               <Sparkles className="h-4 w-4" />
-              Plataforma para streamers disciplinados
+              SaaS de produtividade para streamer
             </div>
 
-            <h1 className="mb-6 text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
-              Sua rotina de live, agora com
-              <span className="block text-gradient">estética de jogo e cérebro de produto.</span>
+            <h1 className="text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
+              Transforme disciplina em
+              <span className="block text-gradient">crescimento previsivel</span>
             </h1>
 
-            <p className="mb-10 max-w-2xl text-lg leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-              Planeje, execute e acompanhe seu progresso diário com metas claras, streaks, recompensas e painel de evolução.
-              Tudo em um só lugar para gerar consistência e crescimento real.
+            <p className="mt-5 max-w-2xl text-base leading-relaxed sm:text-lg" style={{ color: 'var(--color-text-secondary)' }}>
+              O LiveQuest junta planejamento, execucao e feedback em um produto unico. Menos caos no dia a dia, mais
+              consistencia para crescer com conteudo.
             </p>
 
-            <div className="mb-10 flex flex-wrap gap-3">
-              <Button size="lg" onClick={() => navigate('/login')} icon={<Zap className="h-5 w-5" />}>
-                Criar conta grátis
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Button size="lg" onClick={() => navigate('/login')} icon={<Zap className="h-4 w-4" />}>
+                Criar conta gratis
               </Button>
               <Button
                 size="lg"
@@ -134,16 +140,16 @@ export function LandingPage() {
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="mt-8 grid gap-3 sm:grid-cols-3">
               {[
-                { label: 'Foco diário', value: 'Checklists vivos', icon: CheckCircle2 },
-                { label: 'Consistência', value: 'Streaks reais', icon: Flame },
-                { label: 'Competição', value: 'Ranking social', icon: Users },
+                { label: 'Foco diario', value: 'Checklist e rotina', icon: CheckCircle2 },
+                { label: 'Consistencia', value: 'Streak com contexto', icon: Flame },
+                { label: 'Competicao', value: 'Ranking social', icon: Users },
               ].map((item) => {
                 const Icon = item.icon
                 return (
-                  <div key={item.label} className="surface-card rounded-xl px-4 py-4">
-                    <div className="mb-2 flex items-center gap-2 text-sm font-semibold" style={{ color: '#bae6fd' }}>
+                  <div key={item.label} className="glass rounded-xl px-4 py-4">
+                    <div className="mb-2 flex items-center gap-2 text-sm font-semibold" style={{ color: '#c9fff9' }}>
                       <Icon className="h-4 w-4" />
                       {item.label}
                     </div>
@@ -156,57 +162,78 @@ export function LandingPage() {
             </div>
           </div>
 
-          <div className="surface-card relative overflow-hidden rounded-2xl p-6 lg:p-8">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-wider" style={{ color: '#bae6fd' }}>
-                  Live Control
-                </p>
-                <h3 className="text-2xl font-bold">Painel de produtividade</h3>
-              </div>
-              <img src="/logo.png" alt="" className="h-12 w-12 rounded-xl opacity-85" />
-            </div>
+          <div className="reveal surface-card relative overflow-hidden rounded-3xl p-6 lg:p-8">
+            <div className="pointer-events-none absolute inset-0 opacity-80" style={{ background: 'var(--gradient-overlay)' }} />
 
-            <div className="space-y-4">
-              {[
-                { title: 'Metas semanais', progress: 72 },
-                { title: 'Checklist diário', progress: 85 },
-                { title: 'Streak atual', progress: 64 },
-              ].map((item) => (
-                <div key={item.title} className="rounded-xl border p-4" style={{ borderColor: 'rgba(148, 163, 184, 0.2)' }}>
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="font-semibold">{item.title}</span>
-                    <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                      {item.progress}%
-                    </span>
-                  </div>
-                  <div className="h-2 overflow-hidden rounded-full bg-slate-900/80">
-                    <div className="h-full rounded-full" style={{ width: `${item.progress}%`, background: 'var(--gradient-primary)' }} />
-                  </div>
+            <div className="relative">
+              <div className="mb-6 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em]" style={{ color: '#a9fff5' }}>
+                    Live Control
+                  </p>
+                  <h3 className="mt-1 text-2xl font-bold">Painel de operacao</h3>
                 </div>
-              ))}
-            </div>
+                <img src="/logo.png" alt="" className="h-11 w-11 rounded-xl opacity-90" />
+              </div>
 
-            <div className="mt-6 rounded-xl border px-4 py-3 text-sm" style={{ borderColor: 'rgba(56, 189, 248, 0.36)', color: '#bae6fd' }}>
-              Resultado: mais organização, menos ruído e mais energia para criar conteúdo.
+              <div className="space-y-4">
+                {[
+                  { title: 'Metas da semana', progress: 78 },
+                  { title: 'Checklist diario', progress: 84 },
+                  { title: 'Ciclo de conteudo', progress: 66 },
+                ].map((item) => (
+                  <div key={item.title} className="glass rounded-xl border p-4">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="font-semibold">{item.title}</span>
+                      <span className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+                        {item.progress}%
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-slate-950/70">
+                      <div className="h-full rounded-full" style={{ width: `${item.progress}%`, background: 'var(--gradient-primary)' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5 grid grid-cols-3 gap-3">
+                <div className="glass rounded-xl p-3">
+                  <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: 'var(--color-text-secondary)' }}>
+                    XP
+                  </p>
+                  <p className="mt-1 text-lg font-bold">24.8k</p>
+                </div>
+                <div className="glass rounded-xl p-3">
+                  <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: 'var(--color-text-secondary)' }}>
+                    Streak
+                  </p>
+                  <p className="mt-1 text-lg font-bold">19d</p>
+                </div>
+                <div className="glass rounded-xl p-3">
+                  <p className="text-[11px] uppercase tracking-[0.14em]" style={{ color: 'var(--color-text-secondary)' }}>
+                    Rank
+                  </p>
+                  <p className="mt-1 text-lg font-bold">#12</p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
 
-        <section id="features" className="mx-auto w-full max-w-7xl px-4 py-16 md:px-8">
-          <div className="mb-10 text-center">
-            <p className="mb-3 text-sm font-semibold uppercase tracking-[0.2em]" style={{ color: '#67e8f9' }}>
-              Core Features
+        <section id="features" className="mx-auto w-full max-w-7xl px-4 py-14 md:px-8">
+          <div className="mb-10 text-center reveal">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: '#89f8ff' }}>
+              Product stack
             </p>
-            <h2 className="text-3xl font-bold sm:text-4xl">Tudo que você precisa para crescer com consistência</h2>
+            <h2 className="text-3xl font-bold sm:text-4xl">Arquitetura de rotina para criador serio</h2>
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {features.map((feature) => {
+            {features.map((feature, index) => {
               const Icon = feature.icon
               return (
-                <article key={feature.title} className="surface-card glass-hover rounded-2xl p-6">
-                  <div className="mb-5 inline-flex rounded-xl border p-3" style={{ borderColor: 'rgba(56, 189, 248, 0.34)', color: '#67e8f9' }}>
+                <article key={feature.title} className={`reveal surface-card glass-hover rounded-2xl p-6 delay-${(index % 5) + 1}00`}>
+                  <div className="mb-5 inline-flex rounded-xl border p-3" style={{ borderColor: 'rgba(87, 215, 255, 0.34)', color: '#95ffff' }}>
                     <Icon className="h-6 w-6" />
                   </div>
                   <h3 className="mb-2 text-xl font-bold">{feature.title}</h3>
@@ -219,23 +246,23 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-7xl px-4 py-16 md:px-8">
-          <div className="surface-card rounded-3xl p-8 md:p-12">
+        <section className="mx-auto w-full max-w-7xl px-4 pb-8 md:px-8">
+          <div className="reveal surface-card rounded-3xl p-8 md:p-12">
             <div className="mb-8 text-center">
-              <p className="mb-2 text-sm font-semibold uppercase tracking-[0.2em]" style={{ color: '#fdba74' }}>
-                Fluxo simples
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: '#89f8ff' }}>
+                Fluxo objetivo
               </p>
-              <h2 className="text-3xl font-bold sm:text-4xl">Três passos para destravar seu ritmo</h2>
+              <h2 className="text-3xl font-bold sm:text-4xl">Tres etapas para evoluir toda semana</h2>
             </div>
 
             <div className="grid gap-4 md:grid-cols-3">
               {[
-                { step: '01', title: 'Configura seu plano', text: 'Defina metas e tarefas com clareza.' },
-                { step: '02', title: 'Executa com foco', text: 'Cumpre checklists e mantém seu streak.' },
-                { step: '03', title: 'Evolui com dados', text: 'Analisa progresso e ajusta estratégia.' },
+                { step: '01', title: 'Planeja com contexto', text: 'Define metas e tarefas alinhadas com seus objetivos de criador.' },
+                { step: '02', title: 'Executa com foco', text: 'Marca progresso diario com sinais claros de evolucao real.' },
+                { step: '03', title: 'Ajusta com dados', text: 'Usa metricas simples para remover ruido e manter consistencia.' },
               ].map((item) => (
-                <div key={item.step} className="rounded-2xl border p-5" style={{ borderColor: 'rgba(148, 163, 184, 0.2)' }}>
-                  <p className="mb-3 text-sm font-semibold tracking-widest" style={{ color: '#67e8f9' }}>
+                <div key={item.step} className="glass rounded-2xl border p-5">
+                  <p className="mb-3 text-sm font-semibold tracking-[0.16em]" style={{ color: '#8ffef3' }}>
                     {item.step}
                   </p>
                   <h3 className="mb-2 text-xl font-bold">{item.title}</h3>
@@ -248,17 +275,17 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section className="mx-auto w-full max-w-7xl px-4 pb-10 md:px-8">
+        <section className="mx-auto w-full max-w-7xl px-4 pb-14 md:px-8">
           <div
-            className="rounded-3xl border px-6 py-10 text-center sm:px-10"
+            className="reveal rounded-3xl border px-6 py-10 text-center sm:px-10"
             style={{
-              background: 'linear-gradient(125deg, rgba(14, 165, 233, 0.2) 0%, rgba(15, 23, 42, 0.8) 45%, rgba(249, 115, 22, 0.22) 100%)',
-              borderColor: 'rgba(148, 163, 184, 0.24)',
+              background: 'linear-gradient(125deg, rgba(94, 247, 226, 0.18) 0%, rgba(8, 19, 36, 0.78) 45%, rgba(143, 161, 255, 0.22) 100%)',
+              borderColor: 'rgba(139, 161, 203, 0.24)',
             }}
           >
-            <h2 className="mb-3 text-3xl font-bold sm:text-4xl">Comece hoje e torne sua evolução visível</h2>
+            <h2 className="mb-3 text-3xl font-bold sm:text-4xl">Comece hoje e torne sua evolucao visivel</h2>
             <p className="mx-auto mb-8 max-w-2xl text-base sm:text-lg" style={{ color: 'var(--color-text-secondary)' }}>
-              O melhor momento para criar consistência era ontem. O segundo melhor é agora.
+              Menos improviso. Mais ritmo. Uma rotina que vira vantagem competitiva.
             </p>
 
             <div className="flex flex-wrap items-center justify-center gap-3">

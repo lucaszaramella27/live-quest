@@ -1,47 +1,87 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/context/AuthContext'
-import { Button, Modal, Input, Confetti, Toast, XPBar } from '@/shared/ui'
+import { Button, Confetti, GradientCard, Input, Modal, PremiumBadge, Toast, XPBar } from '@/shared/ui'
 import { OnboardingFlow } from '@/features/onboarding/OnboardingFlow'
-import {
-  Target,
-  Flame,
-  CheckSquare,
-  Plus,
-  Zap,
-  Award,
-  Coins,
-  Crown,
-  Sparkles,
-  ArrowRight,
-} from 'lucide-react'
-import { getUserGoals, createGoal, updateGoal, type Goal } from '@/services/goals.service'
-import { getUserChecklists, createChecklistItem, updateChecklistItem, type ChecklistItem } from '@/services/checklists.service'
+import { ArrowRight, Award, CheckSquare, Coins, Crown, Flame, Plus, Sparkles, Target, Zap } from 'lucide-react'
+import { createGoal, getUserGoals, updateGoal, type Goal } from '@/services/goals.service'
+import { createChecklistItem, getUserChecklists, updateChecklistItem, type ChecklistItem } from '@/services/checklists.service'
 import { getUserStreak, type Streak } from '@/services/streaks.service'
-import { getUserProgress, createUserProgress, subscribeToUserProgress, type UserProgress, type Achievement } from '@/services/progress.service'
+import {
+  createUserProgress,
+  getUserProgress,
+  subscribeToUserProgress,
+  type Achievement,
+  type UserProgress,
+} from '@/services/progress.service'
 import { reportError } from '@/services/logger.service'
 
+type ToastKind = 'success' | 'streak' | 'goal' | 'task' | 'achievement'
+
 const motivationalMessages = {
-  taskCompleted: [
-    'Boa! +10 XP',
-    'Mandou bem!',
-    'Isso ai!',
-    'Continua assim!',
-  ],
-  goalCompleted: [
-    'META CONCLUIDA! 🎉',
-    'ARRASOU!',
-    'COMPLETOU!',
-  ],
+  taskCompleted: ['Boa! +10 XP', 'Mandou bem!', 'Isso aí!', 'Continua assim!'],
+  goalCompleted: ['Meta concluída! 🎉', 'Arrasou!', 'Completou!'],
 }
 
-const getRandomMessage = (type: keyof typeof motivationalMessages) => {
+function getRandomMessage(type: keyof typeof motivationalMessages) {
   const messages = motivationalMessages[type]
   return messages[Math.floor(Math.random() * messages.length)]
 }
 
+function StatTile({
+  icon,
+  label,
+  value,
+  detail,
+}: {
+  icon: ReactNode
+  label: string
+  value: ReactNode
+  detail: ReactNode
+}) {
+  return (
+    <div className="glass glass-hover rounded-2xl p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>
+          {label}
+        </p>
+        {icon}
+      </div>
+      <div className="mt-3 flex items-baseline justify-between gap-3">
+        <p className="text-3xl font-bold leading-none" style={{ color: 'var(--color-text)' }}>
+          {value}
+        </p>
+        <p className="text-xs font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+          {detail}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function Metric({
+  label,
+  value,
+}: {
+  label: string
+  value: ReactNode
+}) {
+  return (
+    <div className="glass rounded-2xl px-4 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>
+        {label}
+      </p>
+      <p className="mt-1 text-lg font-bold" style={{ color: 'var(--color-text)' }}>
+        {value}
+      </p>
+    </div>
+  )
+}
+
 export function DashboardPage() {
   const { user } = useAuth()
-  
+  const navigate = useNavigate()
+
   const [goals, setGoals] = useState<Goal[]>([])
   const [checklists, setChecklists] = useState<ChecklistItem[]>([])
   const [streak, setStreak] = useState<Streak | null>(null)
@@ -49,48 +89,44 @@ export function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [showOnboarding, setShowOnboarding] = useState(false)
 
-  // Modal states
   const [showGoalModal, setShowGoalModal] = useState(false)
   const [showChecklistModal, setShowChecklistModal] = useState(false)
 
-  // Form states
   const [newGoalTitle, setNewGoalTitle] = useState('')
   const [newTaskTitle, setNewTaskTitle] = useState('')
 
-  // Fun states
   const [showConfetti, setShowConfetti] = useState(false)
   const [toast, setToast] = useState<{
     show: boolean
     message: string
-    type: 'success' | 'streak' | 'goal' | 'task' | 'achievement'
+    type: ToastKind
   }>({ show: false, message: '', type: 'success' })
 
   useEffect(() => {
-    if (user) {
-      loadDashboardData()
-      
-      // Check if first time user
-      const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding')
-      if (!hasSeenOnboarding) {
-        setTimeout(() => setShowOnboarding(true), 1000) // Delay 1s para loading acabar
-      }
-      
-      const unsubscribe = subscribeToUserProgress(user.id, (updatedProgress) => {
-        if (updatedProgress) {
-          setProgress(updatedProgress)
-        }
-      })
-      
-      return () => unsubscribe()
+    if (!user) return
+
+    void loadDashboardData()
+
+    const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding')
+    if (!hasSeenOnboarding) {
+      setTimeout(() => setShowOnboarding(true), 1000)
     }
+
+    const unsubscribe = subscribeToUserProgress(user.id, (updatedProgress) => {
+      if (updatedProgress) {
+        setProgress(updatedProgress)
+      }
+    })
+
+    return () => unsubscribe()
   }, [user])
 
-  const loadDashboardData = async () => {
+  async function loadDashboardData() {
     if (!user) return
-    
+
     try {
       setLoading(true)
-      
+
       const today = new Date().toISOString().split('T')[0]
       const [goalsData, checklistsData, streakData, progressData] = await Promise.all([
         getUserGoals(user.id),
@@ -98,15 +134,19 @@ export function DashboardPage() {
         getUserStreak(user.id),
         getUserProgress(user.id),
       ])
-      
+
       setGoals(goalsData)
       setChecklists(checklistsData)
       setStreak(streakData)
-      
+
       if (progressData) {
         setProgress(progressData)
       } else {
-        const newProgress = await createUserProgress(user.id)
+        const newProgress = await createUserProgress(
+          user.id,
+          user.displayName || user.email || 'Usuario',
+          user.photoURL || ''
+        )
         setProgress(newProgress)
       }
     } catch (error) {
@@ -116,25 +156,25 @@ export function DashboardPage() {
     }
   }
 
-  const showToast = (message: string, type: typeof toast.type = 'success') => {
+  function showToast(message: string, type: ToastKind = 'success') {
     setToast({ show: true, message, type })
   }
 
-  const showAchievementToast = (achievement: Achievement) => {
+  function showAchievementToast(achievement: Achievement) {
     setShowConfetti(true)
-    showToast(`🏆 CONQUISTA DESBLOQUEADA: ${achievement.name}! +${achievement.xpReward} XP`, 'achievement')
+    showToast(`🏆 Conquista desbloqueada: ${achievement.name} (+${achievement.xpReward} XP)`, 'achievement')
     setTimeout(() => setShowConfetti(false), 3000)
   }
 
-  const handleCompleteOnboarding = () => {
+  function handleCompleteOnboarding() {
     localStorage.setItem('hasSeenOnboarding', 'true')
     setShowOnboarding(false)
     showToast('Bem-vindo ao LiveQuest! 🎉', 'success')
   }
 
-  const handleCreateGoal = async () => {
+  async function handleCreateGoal() {
     if (!user || !newGoalTitle.trim()) return
-    
+
     try {
       await createGoal(user.id, newGoalTitle.trim())
       setNewGoalTitle('')
@@ -146,9 +186,9 @@ export function DashboardPage() {
     }
   }
 
-  const handleCreateTask = async () => {
+  async function handleCreateTask() {
     if (!user || !newTaskTitle.trim()) return
-    
+
     try {
       const today = new Date().toISOString().split('T')[0]
       await createChecklistItem(user.id, newTaskTitle.trim(), '', today)
@@ -161,17 +201,16 @@ export function DashboardPage() {
     }
   }
 
-  const handleToggleChecklist = async (item: ChecklistItem) => {
+  async function handleToggleChecklist(item: ChecklistItem) {
     if (!user) return
-    
+
     try {
       const completed = !item.completed
       const achievements = await updateChecklistItem(item.id, { completed })
-      
+
       if (completed) {
         showToast(getRandomMessage('taskCompleted'), 'task')
-        
-        // Mostrar toasts de achievements desbloqueados
+
         if (achievements && achievements.length > 0) {
           setTimeout(() => {
             achievements.forEach((achievement, index) => {
@@ -180,30 +219,29 @@ export function DashboardPage() {
           }, 1000)
         }
       }
-      
+
       await loadDashboardData()
     } catch (error) {
       reportError('Erro ao atualizar checklist:', error)
     }
   }
 
-  const handleUpdateGoalProgress = async (goal: Goal, increment: number) => {
+  async function handleUpdateGoalProgress(goal: Goal, increment: number) {
     if (!user) return
-    
+
     try {
-      const newProgress = Math.max(0, Math.min(100, (goal.progress || 0) + increment))
-      const completed = newProgress >= 100
-      
-      const achievements = await updateGoal(goal.id, { 
-        progress: newProgress,
-        completed 
+      const nextProgress = Math.max(0, Math.min(100, (goal.progress || 0) + increment))
+      const completed = nextProgress >= 100
+
+      const achievements = await updateGoal(goal.id, {
+        progress: nextProgress,
+        completed,
       })
-      
+
       if (completed) {
         setShowConfetti(true)
         showToast(getRandomMessage('goalCompleted'), 'achievement')
-        
-        // Mostrar toasts de achievements desbloqueados
+
         if (achievements && achievements.length > 0) {
           setTimeout(() => {
             achievements.forEach((achievement, index) => {
@@ -212,30 +250,34 @@ export function DashboardPage() {
           }, 2000)
         }
       }
-      
+
       await loadDashboardData()
     } catch (error) {
       reportError('Erro ao atualizar meta:', error)
     }
   }
 
-  // Get greeting based on time
-  const getGreeting = () => {
+  function getGreeting() {
     const hour = new Date().getHours()
     if (hour < 12) return 'Bom dia'
     if (hour < 18) return 'Boa tarde'
     return 'Boa noite'
   }
 
-  const completedTasks = checklists.filter(c => c.completed).length
+  const completedTasks = checklists.filter((entry) => entry.completed).length
   const totalTasks = checklists.length
-  const activeGoals = goals.filter(g => !g.completed)
+  const tasksPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+  const completedGoalsCount = goals.filter((goal) => goal.completed).length
+  const activeGoalsCount = goals.filter((goal) => !goal.completed).length
   const firstName = (user?.displayName || user?.email || 'Streamer').split(' ')[0]
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--color-background)' }}>
-        <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }} />
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div
+          className="h-10 w-10 animate-spin rounded-full border-2 border-t-transparent"
+          style={{ borderColor: 'var(--color-primary)', borderTopColor: 'transparent' }}
+        />
       </div>
     )
   }
@@ -245,360 +287,441 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--color-background)' }}>
-      {/* Clean Header */}
-      <header className="sticky top-0 z-50 border-b" style={{ background: 'var(--color-background-secondary)', borderColor: 'var(--color-background-tertiary)' }}>
-        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="transition-all duration-300 hover:scale-110 hover:animate-pulse cursor-pointer">
-              <img src="/logo.png" alt="LiveQuest Logo" className="w-12 h-12" />
-            </div>
-            <span className="font-bold text-lg hidden sm:block">LiveQuest</span>
-          </div>
+    <div className="mx-auto w-full max-w-6xl space-y-8">
+      <GradientCard hover={false} className="relative overflow-hidden p-8">
+        <div
+          className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full blur-3xl"
+          style={{ background: 'rgba(34, 211, 238, 0.16)' }}
+        />
+        <div
+          className="pointer-events-none absolute -bottom-24 -right-24 h-72 w-72 rounded-full blur-3xl"
+          style={{ background: 'rgba(249, 115, 22, 0.14)' }}
+        />
+        <div className="relative space-y-8">
+          <div className="flex flex-col gap-7 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-xl">
+              <div className="flex flex-wrap items-center gap-3">
+                <p className="text-sm font-semibold" style={{ color: 'var(--color-text-secondary)' }}>
+                  {getGreeting()},
+                </p>
+                {progress?.isPremium && (
+                  <PremiumBadge size="sm" glow>
+                    <Crown className="h-3.5 w-3.5" />
+                    Premium
+                  </PremiumBadge>
+                )}
+              </div>
 
-          <div className="flex items-center gap-4">
-            {progress && (
-              <>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg" style={{ background: 'var(--color-background-tertiary)' }}>
-                  <Coins className="w-4 h-4 text-amber-500" />
-                  <span className="font-semibold text-sm">{progress.coins || 0}</span>
-                </div>
-                
-                <XPBar xp={progress.xp} level={progress.level} compact />
-              </>
-            )}
-            
-            {user.photoURL && (
-              <img 
-                src={user.photoURL} 
-                alt=""
-                className="w-9 h-9 rounded-full border-2 transition-all"
-                style={{ borderColor: 'var(--color-primary)' }}
-              />
-            )}
-          </div>
-        </div>
-      </header>
+              <h1 className="mt-2 text-4xl font-extrabold tracking-tight md:text-5xl">
+                <span className="text-gradient-animated">{firstName}</span>
+              </h1>
 
-      <main className="max-w-7xl mx-auto px-8 py-10">
-        {/* Welcome - Simple */}
-        <div className="mb-10">
-          <h1 className="text-3xl font-bold mb-2">
-            {getGreeting()}, {firstName}
-          </h1>
-          <p className="text-lg" style={{ color: 'var(--color-text-secondary)' }}>
-            {totalTasks > 0
-              ? `${completedTasks}/${totalTasks} tarefas concluídas hoje`
-              : 'Pronto para um dia produtivo'
-            }
-          </p>
-        </div>
-
-        {/* Premium Offer Banner - Only show if not premium */}
-        {!progress?.isPremium && (
-          <div 
-            className="relative overflow-hidden rounded-2xl p-6 mb-8 border cursor-pointer transition-all duration-300 hover:scale-[1.02] hover:shadow-xl group"
-            onClick={() => window.location.href = '/plans'}
-            style={{ 
-              background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)',
-              borderColor: 'rgba(59, 130, 246, 0.3)'
-            }}
-          >
-            {/* Animated background gradient */}
-            <div 
-              className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-              style={{
-                background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%)'
-              }}
-            />
-            
-            {/* Sparkle decorations */}
-            <div className="absolute top-4 right-4 opacity-20">
-              <Sparkles className="w-16 h-16" style={{ color: '#fbbf24' }} />
-            </div>
-            <div className="absolute bottom-4 left-4 opacity-10">
-              <Sparkles className="w-12 h-12" style={{ color: '#8b5cf6' }} />
+              <p className="mt-3 text-sm md:text-base" style={{ color: 'var(--color-text-secondary)' }}>
+                {totalTasks > 0
+                  ? `${completedTasks}/${totalTasks} tarefas concluídas hoje (${tasksPercentage}%).`
+                  : 'Pronto para um dia produtivo? Comece criando sua primeira tarefa.'}
+              </p>
             </div>
 
-            <div className="relative z-10 flex items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                {/* Crown icon */}
-                <div 
-                  className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300"
-                  style={{ 
-                    background: 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%)',
-                    boxShadow: '0 4px 20px rgba(251, 191, 36, 0.3)'
-                  }}
-                >
-                  <Crown className="w-7 h-7 text-white" />
-                </div>
-
-                {/* Text content */}
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>
-                      Desbloqueie o Premium
-                    </h3>
-                    <span 
-                      className="px-2 py-0.5 rounded-full text-xs font-bold"
-                      style={{ 
-                        background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                        color: 'white'
-                      }}
+            <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center lg:items-start lg:justify-end">
+              <div className="flex flex-wrap items-center gap-3">
+                {progress && (
+                  <>
+                    <div
+                      className="glass flex items-center gap-2 rounded-xl px-3 py-2"
+                      style={{ borderColor: 'rgba(245, 158, 11, 0.25)' }}
                     >
-                      🔥 OFERTA
+                      <Coins className="h-4 w-4 text-amber-500" />
+                      <span className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>
+                        {progress.coins.toLocaleString()}
+                      </span>
+                    </div>
+                    <XPBar xp={progress.xp} level={progress.level} compact />
+                  </>
+                )}
+
+                <div
+                  className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border"
+                  style={{ borderColor: 'rgba(125, 211, 252, 0.45)' }}
+                >
+                  {user.photoURL ? (
+                    <img src={user.photoURL} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-sm font-bold" style={{ color: 'var(--color-text)' }}>
+                      {firstName.slice(0, 1).toUpperCase()}
                     </span>
-                  </div>
-                  <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-                    Recursos exclusivos, temas ilimitados, prioridade no suporte e muito mais!
-                  </p>
+                  )}
                 </div>
               </div>
 
-              {/* CTA Button */}
-              <Button
-                variant="primary"
-                className="flex-shrink-0 group-hover:scale-110 transition-all duration-300 shadow-lg"
-                style={{ 
-                  background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-                  color: 'white'
-                }}
-                icon={<ArrowRight className="w-4 h-4" />}
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  variant="secondary"
+                  icon={<Plus className="h-4 w-4" />}
+                  onClick={() => setShowChecklistModal(true)}
+                >
+                  Nova tarefa
+                </Button>
+                <Button icon={<Target className="h-4 w-4" />} onClick={() => setShowGoalModal(true)}>
+                  Nova meta
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatTile
+              label="Streak"
+              value={streak?.currentStreak || 0}
+              detail="dias"
+              icon={<Flame className="h-5 w-5" style={{ color: 'var(--color-secondary)' }} />}
+            />
+            <StatTile
+              label="Tarefas"
+              value={totalTasks > 0 ? `${completedTasks}/${totalTasks}` : 0}
+              detail={totalTasks > 0 ? 'concluídas' : 'hoje'}
+              icon={<CheckSquare className="h-5 w-5" style={{ color: 'var(--color-primary)' }} />}
+            />
+            <StatTile
+              label="Metas"
+              value={activeGoalsCount}
+              detail="ativas"
+              icon={<Target className="h-5 w-5" style={{ color: 'var(--color-secondary)' }} />}
+            />
+            <StatTile
+              label="Nível"
+              value={progress?.level || 1}
+              detail="atual"
+              icon={<Zap className="h-5 w-5" style={{ color: 'var(--color-accent)' }} />}
+            />
+          </div>
+
+          {totalTasks > 0 && (
+            <div className="glass rounded-2xl px-5 py-4">
+              <div className="flex items-center justify-between text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                <span>Progresso de hoje</span>
+                <span className="font-bold" style={{ color: 'var(--color-text)' }}>
+                  {tasksPercentage}%
+                </span>
+              </div>
+              <div
+                className="mt-3 h-2 overflow-hidden rounded-full"
+                style={{ background: 'rgba(8, 15, 28, 0.88)' }}
               >
-                Ver Planos
-              </Button>
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{ width: `${tasksPercentage}%`, background: 'var(--gradient-primary)' }}
+                />
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      </GradientCard>
 
-        {/* Stats Row - Compact */}
-        <div className="grid grid-cols-3 gap-6 mb-10">
-          <div className="p-6 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer" style={{ background: 'var(--color-background-secondary)' }}>
-            <div className="flex items-center gap-2 mb-2">
-              <Flame className="w-5 h-5" style={{ color: 'var(--color-secondary)' }} />
-              <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Streak</span>
-            </div>
-            <p className="text-3xl font-bold">{streak?.currentStreak || 0}</p>
-            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>dias</p>
+      {!progress?.isPremium && (
+        <div
+          className="surface-card gradient-border relative overflow-hidden border p-6"
+          style={{ borderColor: 'rgba(56, 189, 248, 0.18)' }}
+        >
+          <div className="pointer-events-none absolute -right-8 -top-10 opacity-15">
+            <Sparkles className="h-20 w-20" style={{ color: '#f59e0b' }} />
           </div>
-
-          <div className="p-6 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer" style={{ background: 'var(--color-background-secondary)' }}>
-            <div className="flex items-center gap-2 mb-2">
-              <Target className="w-5 h-5" style={{ color: 'var(--color-primary)' }} />
-              <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Metas</span>
-            </div>
-            <p className="text-3xl font-bold">{activeGoals.length}</p>
-            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>ativas</p>
+          <div className="pointer-events-none absolute -left-10 -bottom-10 opacity-10">
+            <Sparkles className="h-20 w-20" style={{ color: 'var(--color-primary)' }} />
           </div>
 
-          <div className="p-6 rounded-xl transition-all duration-300 hover:scale-105 hover:shadow-lg cursor-pointer" style={{ background: 'var(--color-background-secondary)' }}>
-            <div className="flex items-center gap-2 mb-2">
-              <Zap className="w-5 h-5" style={{ color: 'var(--color-accent)' }} />
-              <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Nível</span>
+          <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-start gap-4">
+              <div
+                className="flex h-12 w-12 items-center justify-center rounded-2xl border"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.28), rgba(249, 115, 22, 0.18))',
+                  borderColor: 'rgba(245, 158, 11, 0.28)',
+                }}
+              >
+                <Crown className="h-6 w-6 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--color-text-secondary)' }}>
+                  Upgrade
+                </p>
+                <h2 className="mt-1 text-xl font-bold">Desbloqueie o Premium</h2>
+                <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                  Metas ilimitadas, temas premium, relatórios e integrações avançadas.
+                </p>
+              </div>
             </div>
-            <p className="text-3xl font-bold">{progress?.level || 1}</p>
-            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>atual</p>
+
+            <Button icon={<ArrowRight className="h-4 w-4" />} onClick={() => navigate('/plans')}>
+              Ver planos
+            </Button>
           </div>
         </div>
+      )}
 
-        {/* Main Content - Two Columns */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          
-          {/* Today's Tasks */}
-          <section className="rounded-xl p-5" style={{ background: 'var(--color-background-secondary)' }}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <CheckSquare className="w-5 h-5" style={{ color: 'var(--color-primary)' }} />
-                <h2 className="font-semibold">Tarefas de Hoje</h2>
-              </div>
-              <button 
-                onClick={() => setShowChecklistModal(true)}
-                className="p-2 rounded-lg transition-colors hover:opacity-80"
-                style={{ background: 'var(--color-background-tertiary)' }}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <GradientCard hover={false} className="p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div
+                className="flex h-11 w-11 items-center justify-center rounded-2xl border"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(34, 211, 238, 0.18), rgba(14, 165, 233, 0.12))',
+                  borderColor: 'rgba(34, 211, 238, 0.22)',
+                }}
               >
-                <Plus className="w-4 h-4" />
-              </button>
+                <CheckSquare className="h-5 w-5" style={{ color: 'var(--color-primary)' }} />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold">Tarefas de hoje</h2>
+                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                  {totalTasks > 0 ? `${completedTasks} concluídas • ${tasksPercentage}%` : 'Organize seu dia em pequenos passos.'}
+                </p>
+              </div>
             </div>
 
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<Plus className="h-4 w-4" />}
+              onClick={() => setShowChecklistModal(true)}
+            >
+              Adicionar
+            </Button>
+          </div>
+
+          <div className="mt-6">
             {checklists.length === 0 ? (
-              <div className="py-8 text-center" style={{ color: 'var(--color-text-secondary)' }}>
-                <CheckSquare className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">Nenhuma tarefa para hoje</p>
-                <button 
-                  onClick={() => setShowChecklistModal(true)}
-                  className="text-sm mt-2 hover:underline"
-                  style={{ color: 'var(--color-primary)' }}
-                >
-                  Adicionar tarefa
-                </button>
+              <div className="glass rounded-2xl p-6 text-center">
+                <CheckSquare className="mx-auto h-10 w-10 opacity-40" style={{ color: 'var(--color-text-secondary)' }} />
+                <p className="mt-3 font-semibold">Nenhuma tarefa ainda</p>
+                <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                  Crie uma tarefa simples e ganhe XP ao completar.
+                </p>
+                <div className="mt-5 flex justify-center">
+                  <Button icon={<Plus className="h-4 w-4" />} onClick={() => setShowChecklistModal(true)}>
+                    Criar tarefa
+                  </Button>
+                </div>
               </div>
             ) : (
-              <div className="space-y-2">
+              <ul className="space-y-2">
                 {checklists.map((item) => (
-                  <label
-                    key={item.id}
-                    className="flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors"
-                    style={{ background: item.completed ? 'transparent' : 'var(--color-background-tertiary)' }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={item.completed}
-                      onChange={() => handleToggleChecklist(item)}
-                      className="w-5 h-5 rounded-md border-2 cursor-pointer accent-current"
-                      style={{ accentColor: 'var(--color-primary)' }}
-                    />
-                    <span className={`flex-1 ${item.completed ? 'line-through opacity-50' : ''}`}>
-                      {item.task}
-                    </span>
-                    {item.completed && <Zap className="w-4 h-4 text-amber-500" />}
-                  </label>
+                  <li key={item.id}>
+                    <label
+                      className="glass glass-hover flex cursor-pointer items-start gap-3 rounded-2xl px-4 py-3"
+                      style={{ background: item.completed ? 'rgba(12, 21, 37, 0.42)' : 'rgba(12, 21, 37, 0.62)' }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={item.completed}
+                        onChange={() => handleToggleChecklist(item)}
+                        className="mt-0.5 h-5 w-5 cursor-pointer rounded-md border-2"
+                        style={{ accentColor: 'var(--color-primary)' }}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className={`font-semibold leading-snug ${item.completed ? 'line-through opacity-60' : ''}`}>
+                          {item.task}
+                        </p>
+                        {item.time && (
+                          <p className="mt-1 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                            {item.time}
+                          </p>
+                        )}
+                      </div>
+                      {item.completed && (
+                        <div className="flex items-center gap-1 text-xs font-bold" style={{ color: '#f59e0b' }}>
+                          <Zap className="h-4 w-4" />
+                          Feito
+                        </div>
+                      )}
+                    </label>
+                  </li>
                 ))}
-              </div>
+              </ul>
             )}
+          </div>
+        </GradientCard>
 
-            {totalTasks > 0 && (
-              <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--color-background-tertiary)' }}>
-                <div className="flex items-center justify-between text-sm">
-                  <span style={{ color: 'var(--color-text-secondary)' }}>Progresso</span>
-                  <span className="font-semibold">{Math.round((completedTasks / totalTasks) * 100)}%</span>
-                </div>
-                <div className="mt-2 h-2 rounded-full overflow-hidden" style={{ background: 'var(--color-background-tertiary)' }}>
-                  <div 
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{ 
-                      width: `${(completedTasks / totalTasks) * 100}%`,
-                      background: 'var(--gradient-primary)'
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-          </section>
-
-          {/* Goals */}
-          <section className="rounded-xl p-5" style={{ background: 'var(--color-background-secondary)' }}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Target className="w-5 h-5" style={{ color: 'var(--color-secondary)' }} />
-                <h2 className="font-semibold">Minhas Metas</h2>
-              </div>
-              <button 
-                onClick={() => setShowGoalModal(true)}
-                className="p-2 rounded-lg transition-colors hover:opacity-80"
-                style={{ background: 'var(--color-background-tertiary)' }}
+        <GradientCard hover={false} className="p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div
+                className="flex h-11 w-11 items-center justify-center rounded-2xl border"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(249, 115, 22, 0.16), rgba(245, 158, 11, 0.08))',
+                  borderColor: 'rgba(249, 115, 22, 0.2)',
+                }}
               >
-                <Plus className="w-4 h-4" />
-              </button>
+                <Target className="h-5 w-5" style={{ color: 'var(--color-secondary)' }} />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold">Minhas metas</h2>
+                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                  {goals.length > 0 ? `${activeGoalsCount} ativas • ${completedGoalsCount} concluídas` : 'Defina um alvo e acompanhe a evolução.'}
+                </p>
+              </div>
             </div>
 
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={<Plus className="h-4 w-4" />}
+              onClick={() => setShowGoalModal(true)}
+            >
+              Criar
+            </Button>
+          </div>
+
+          <div className="mt-6">
             {goals.length === 0 ? (
-              <div className="py-8 text-center" style={{ color: 'var(--color-text-secondary)' }}>
-                <Target className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p className="text-sm">Nenhuma meta definida</p>
-                <button 
-                  onClick={() => setShowGoalModal(true)}
-                  className="text-sm mt-2 hover:underline"
-                  style={{ color: 'var(--color-primary)' }}
-                >
-                  Criar primeira meta
-                </button>
+              <div className="glass rounded-2xl p-6 text-center">
+                <Target className="mx-auto h-10 w-10 opacity-40" style={{ color: 'var(--color-text-secondary)' }} />
+                <p className="mt-3 font-semibold">Nenhuma meta por aqui</p>
+                <p className="mt-1 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                  Comece com algo simples, tipo “Atingir 1.000 seguidores”.
+                </p>
+                <div className="mt-5 flex justify-center">
+                  <Button icon={<Plus className="h-4 w-4" />} onClick={() => setShowGoalModal(true)}>
+                    Criar meta
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="space-y-3">
-                {goals.slice(0, 4).map((goal) => (
-                  <div 
-                    key={goal.id}
-                    className="p-3 rounded-lg transition-all duration-200 hover:scale-[1.02] hover:translate-x-1 hover:shadow-lg cursor-pointer"
-                    style={{ background: 'var(--color-background-tertiary)' }}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className={`text-sm font-medium ${goal.completed ? 'line-through opacity-50' : ''}`}>
-                        {goal.title}
-                      </span>
-                      {goal.completed ? (
-                        <Award className="w-5 h-5 text-amber-500" />
-                      ) : (
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleUpdateGoalProgress(goal, -10)}
-                            className="w-7 h-7 rounded-md flex items-center justify-center text-sm font-bold transition-colors hover:bg-white/5"
-                            style={{ color: 'var(--color-text-secondary)' }}
-                          >
-                            -
-                          </button>
-                          <button
-                            onClick={() => handleUpdateGoalProgress(goal, 10)}
-                            className="w-7 h-7 rounded-md flex items-center justify-center text-sm font-bold transition-colors"
-                            style={{ color: 'var(--color-primary)' }}
-                          >
-                            +
-                          </button>
+                {goals.slice(0, 5).map((goal) => {
+                  const isCompleted = goal.completed
+                  const goalProgress = goal.progress || 0
+                  const canDecrement = !isCompleted && goalProgress > 0
+                  const canIncrement = !isCompleted && goalProgress < 100
+
+                  return (
+                    <div
+                      key={goal.id}
+                      className="glass glass-hover rounded-2xl px-4 py-3"
+                      style={{ background: isCompleted ? 'rgba(12, 21, 37, 0.42)' : 'rgba(12, 21, 37, 0.62)' }}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className={`font-semibold leading-snug ${isCompleted ? 'line-through opacity-60' : ''}`}>
+                            {goal.title}
+                          </p>
+                          <p className="mt-1 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                            {goalProgress}% concluído
+                          </p>
                         </div>
-                      )}
+
+                        {isCompleted ? (
+                          <div className="flex items-center gap-2 text-xs font-bold" style={{ color: '#f59e0b' }}>
+                            <Award className="h-4 w-4" />
+                            Concluída
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={!canDecrement}
+                              onClick={() => handleUpdateGoalProgress(goal, -10)}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border text-sm font-bold transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                              style={{
+                                background: 'rgba(15, 23, 42, 0.72)',
+                                borderColor: 'rgba(148, 163, 184, 0.22)',
+                                color: 'var(--color-text-secondary)',
+                              }}
+                            >
+                              −
+                            </button>
+                            <button
+                              type="button"
+                              disabled={!canIncrement}
+                              onClick={() => handleUpdateGoalProgress(goal, 10)}
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-xl border text-sm font-bold transition-all disabled:cursor-not-allowed disabled:opacity-50"
+                              style={{
+                                background: 'rgba(15, 23, 42, 0.72)',
+                                borderColor: 'rgba(125, 211, 252, 0.38)',
+                                color: 'var(--color-primary)',
+                              }}
+                            >
+                              +
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-3 h-2 overflow-hidden rounded-full" style={{ background: 'rgba(8, 15, 28, 0.88)' }}>
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${goalProgress}%`,
+                            background: isCompleted ? 'linear-gradient(135deg, #f59e0b, #fb923c)' : 'var(--gradient-primary)',
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--color-background)' }}>
-                      <div 
-                        className="h-full rounded-full transition-all duration-300"
-                        style={{ 
-                          width: `${goal.progress || 0}%`,
-                          background: goal.completed ? '#f59e0b' : 'var(--gradient-primary)'
-                        }}
-                      />
-                    </div>
-                    <p className="text-xs mt-1" style={{ color: 'var(--color-text-secondary)' }}>
-                      {goal.progress || 0}%
-                    </p>
-                  </div>
-                ))}
-                
-                {goals.length > 4 && (
-                  <p className="text-center text-sm py-2" style={{ color: 'var(--color-text-secondary)' }}>
-                    +{goals.length - 4} metas
+                  )
+                })}
+
+                {goals.length > 5 && (
+                  <p className="pt-1 text-center text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                    +{goals.length - 5} metas
                   </p>
                 )}
               </div>
             )}
-          </section>
-        </div>
+          </div>
+        </GradientCard>
+      </div>
 
-        {/* Quick Stats Footer */}
-        {progress && (
-          <div className="mt-8 p-4 rounded-xl flex items-center justify-between flex-wrap gap-4" style={{ background: 'var(--color-background-secondary)' }}>
-            <div className="flex items-center gap-6 flex-wrap">
-              <div>
-                <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>XP Total</p>
-                <p className="font-bold">{(progress.xp + (progress.level - 1) * 100).toLocaleString()}</p>
+      {progress && (
+        <GradientCard hover={false} className="p-6">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-start gap-3">
+              <div
+                className="flex h-11 w-11 items-center justify-center rounded-2xl border"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(34, 211, 238, 0.16), rgba(249, 115, 22, 0.1))',
+                  borderColor: 'rgba(125, 211, 252, 0.24)',
+                }}
+              >
+                <Sparkles className="h-5 w-5" style={{ color: 'var(--color-primary)' }} />
               </div>
               <div>
-                <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Metas Completas</p>
-                <p className="font-bold">{goals.filter(g => g.completed).length}</p>
-              </div>
-              <div>
-                <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Maior Streak</p>
-                <p className="font-bold">{streak?.longestStreak || 0} dias</p>
+                <h3 className="text-lg font-bold">Resumo rápido</h3>
+                <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+                  Alguns números para manter o ritmo.
+                </p>
               </div>
             </div>
-          </div>
-        )}
-      </main>
 
-      {/* Modals */}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Metric label="XP total" value={progress.xp.toLocaleString()} />
+              <Metric label="Coins" value={progress.coins.toLocaleString()} />
+              <Metric label="Metas concluídas" value={completedGoalsCount} />
+              <Metric label="Maior streak" value={`${streak?.longestStreak || 0} dias`} />
+            </div>
+          </div>
+        </GradientCard>
+      )}
+
       <Modal
         isOpen={showGoalModal}
         onClose={() => {
           setShowGoalModal(false)
           setNewGoalTitle('')
         }}
-        title="Nova Meta"
+        title="Nova meta"
       >
-        <form onSubmit={(e) => {
-          e.preventDefault()
-          handleCreateGoal()
-        }} className="space-y-4">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            void handleCreateGoal()
+          }}
+          className="space-y-4"
+        >
           <Input
             label="O que você quer alcançar"
             value={newGoalTitle}
-            onChange={(e) => setNewGoalTitle(e.target.value)}
+            onChange={(event) => setNewGoalTitle(event.target.value)}
             placeholder="Ex: Alcançar 1000 seguidores"
             autoFocus
             required
@@ -614,9 +737,7 @@ export function DashboardPage() {
             >
               Cancelar
             </Button>
-            <Button type="submit" variant="primary">
-              Criar
-            </Button>
+            <Button type="submit">Criar</Button>
           </div>
         </form>
       </Modal>
@@ -627,16 +748,19 @@ export function DashboardPage() {
           setShowChecklistModal(false)
           setNewTaskTitle('')
         }}
-        title="Nova Tarefa"
+        title="Nova tarefa"
       >
-        <form onSubmit={(e) => {
-          e.preventDefault()
-          handleCreateTask()
-        }} className="space-y-4">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            void handleCreateTask()
+          }}
+          className="space-y-4"
+        >
           <Input
             label="O que precisa fazer"
             value={newTaskTitle}
-            onChange={(e) => setNewTaskTitle(e.target.value)}
+            onChange={(event) => setNewTaskTitle(event.target.value)}
             placeholder="Ex: Editar vídeo"
             autoFocus
             required
@@ -652,23 +776,14 @@ export function DashboardPage() {
             >
               Cancelar
             </Button>
-            <Button type="submit" variant="primary">
-              Adicionar
-            </Button>
+            <Button type="submit">Adicionar</Button>
           </div>
         </form>
       </Modal>
 
-      {/* Onboarding */}
-      {showOnboarding && (
-        <OnboardingFlow onComplete={handleCompleteOnboarding} />
-      )}
+      {showOnboarding && <OnboardingFlow onComplete={handleCompleteOnboarding} />}
 
-      {/* Effects */}
-      <Confetti 
-        active={showConfetti} 
-        onComplete={() => setShowConfetti(false)} 
-      />
+      <Confetti active={showConfetti} onComplete={() => setShowConfetti(false)} />
       <Toast
         show={toast.show}
         message={toast.message}
