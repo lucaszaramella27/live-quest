@@ -1,16 +1,38 @@
 import { useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 
-const REVEAL_SELECTOR = '[data-reveal], .reveal-on-scroll, .surface-card, .page-shell > *, main > section, main > article'
-const STAGGER_STEP_MS = 55
-const STAGGER_MAX_MS = 420
+const REVEAL_SELECTOR = '[data-reveal], .reveal-on-scroll'
+const STAGGER_STEP_MS = 24
+const STAGGER_MAX_MS = 140
 
 function supportsReducedMotion(): boolean {
   return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
+function shouldSkipReveal(element: HTMLElement): boolean {
+  if (element.hasAttribute('data-no-reveal')) return true
+  if (element.closest('[data-no-reveal], [role="dialog"], [aria-modal="true"]')) return true
+
+  if (typeof window !== 'undefined') {
+    const computedStyle = window.getComputedStyle(element)
+    if (computedStyle.position === 'fixed') return true
+    if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden') return true
+  }
+
+  return false
+}
+
 function isRevealCandidate(element: Element): element is HTMLElement {
-  return element instanceof HTMLElement && element.matches(REVEAL_SELECTOR) && !element.hasAttribute('data-no-reveal')
+  return element instanceof HTMLElement && element.matches(REVEAL_SELECTOR) && !shouldSkipReveal(element)
+}
+
+function isElementInViewport(element: HTMLElement): boolean {
+  if (typeof window === 'undefined') return true
+
+  const rect = element.getBoundingClientRect()
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight
+
+  return rect.top < viewportHeight * 0.94 && rect.bottom > 0
 }
 
 export function ScrollRevealManager() {
@@ -37,8 +59,8 @@ export function ScrollRevealManager() {
           },
           {
             root: null,
-            threshold: 0.14,
-            rootMargin: '0px 0px -10% 0px',
+            threshold: 0.04,
+            rootMargin: '0px 0px -4% 0px',
           }
         )
       : null
@@ -56,6 +78,11 @@ export function ScrollRevealManager() {
       revealIndex += 1
 
       if (!canUseObserver) {
+        element.classList.add('reveal-visible')
+        return
+      }
+
+      if (isElementInViewport(element)) {
         element.classList.add('reveal-visible')
         return
       }
@@ -79,7 +106,7 @@ export function ScrollRevealManager() {
     scanNode(document)
 
     const rafId = window.requestAnimationFrame(() => scanNode(document))
-    const delayedScan = window.setTimeout(() => scanNode(document), 140)
+    const delayedScan = window.setTimeout(() => scanNode(document), 80)
 
     const mutationObserver = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
