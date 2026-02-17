@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Menu } from 'lucide-react'
 import { useAuth } from '@/features/auth/context/AuthContext'
+import { getUserInventory, subscribeToUserInventory, type EquippedItems } from '@/services/inventory.service'
 import { getUserProgress, createUserProgress, subscribeToUserProgress, type UserProgress } from '@/services/progress.service'
 import { reportError } from '@/services/logger.service'
 import { Sidebar } from './Sidebar'
@@ -14,6 +15,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user } = useAuth()
   const location = useLocation()
   const [progress, setProgress] = useState<UserProgress | null>(null)
+  const [equippedItems, setEquippedItems] = useState<EquippedItems | null>(null)
   const [showMobileSidebar, setShowMobileSidebar] = useState(false)
 
   useEffect(() => {
@@ -42,15 +44,35 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
     void loadInitialProgress()
 
-    const unsubscribe = subscribeToUserProgress(user.id, (updatedProgress) => {
+    const loadInitialInventory = async () => {
+      try {
+        const inventory = await getUserInventory()
+        if (isMounted) {
+          setEquippedItems(inventory.equippedItems)
+        }
+      } catch (error) {
+        reportError('dashboard_layout_load_inventory', error, { userId: user.id })
+      }
+    }
+
+    void loadInitialInventory()
+
+    const unsubscribeProgress = subscribeToUserProgress(user.id, (updatedProgress) => {
       if (updatedProgress && isMounted) {
         setProgress(updatedProgress)
       }
     })
 
+    const unsubscribeInventory = subscribeToUserInventory(user.id, (updatedInventory) => {
+      if (isMounted) {
+        setEquippedItems(updatedInventory.equippedItems)
+      }
+    })
+
     return () => {
       isMounted = false
-      unsubscribe()
+      unsubscribeProgress()
+      unsubscribeInventory()
     }
   }, [user])
 
@@ -67,7 +89,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       />
 
       <div className="hidden lg:block">
-        <Sidebar progress={progress} />
+        <Sidebar progress={progress} equippedItems={equippedItems} />
       </div>
 
       {showMobileSidebar && (
@@ -78,7 +100,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           />
 
           <div className="relative">
-            <Sidebar progress={progress} onClose={() => setShowMobileSidebar(false)} />
+            <Sidebar
+              progress={progress}
+              equippedItems={equippedItems}
+              onClose={() => setShowMobileSidebar(false)}
+            />
           </div>
         </div>
       )}

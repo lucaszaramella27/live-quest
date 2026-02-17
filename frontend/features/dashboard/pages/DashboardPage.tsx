@@ -1,11 +1,12 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/features/auth/context/AuthContext'
-import { Button, Confetti, GradientCard, Input, Modal, PremiumBadge, Toast, XPBar } from '@/shared/ui'
+import { Button, Confetti, GradientCard, IconMapper, Input, Modal, PremiumBadge, Toast, XPBar } from '@/shared/ui'
 import { OnboardingFlow } from '@/features/onboarding/OnboardingFlow'
 import { ArrowRight, Award, CheckSquare, Coins, Crown, Flame, Plus, Sparkles, Target, Zap } from 'lucide-react'
 import { createGoal, getUserGoals, updateGoal, type Goal } from '@/services/goals.service'
 import { createChecklistItem, getUserChecklists, updateChecklistItem, type ChecklistItem } from '@/services/checklists.service'
+import { getUserInventory, subscribeToUserInventory, type EquippedItems } from '@/services/inventory.service'
 import { getUserStreak, type Streak } from '@/services/streaks.service'
 import {
   createUserProgress,
@@ -15,6 +16,7 @@ import {
   type UserProgress,
 } from '@/services/progress.service'
 import { reportError } from '@/services/logger.service'
+import { getItemById } from '@/services/shop.service'
 
 type ToastKind = 'success' | 'streak' | 'goal' | 'task' | 'achievement'
 
@@ -26,6 +28,40 @@ const motivationalMessages = {
 function getRandomMessage(type: keyof typeof motivationalMessages) {
   const messages = motivationalMessages[type]
   return messages[Math.floor(Math.random() * messages.length)]
+}
+
+function getDashboardAvatarFrameStyle(equippedAvatarItemId: string | null | undefined): Record<string, string> {
+  if (equippedAvatarItemId === 'fire_aura') {
+    return {
+      borderColor: 'rgba(251, 146, 60, 0.55)',
+      boxShadow: '0 0 24px -10px rgba(249, 115, 22, 0.75)',
+    }
+  }
+
+  if (equippedAvatarItemId === 'rainbow_trail') {
+    return {
+      borderColor: 'rgba(125, 211, 252, 0.55)',
+      boxShadow: '0 0 24px -10px rgba(96, 165, 250, 0.74)',
+    }
+  }
+
+  if (equippedAvatarItemId === 'galaxy_aura') {
+    return {
+      borderColor: 'rgba(167, 139, 250, 0.58)',
+      boxShadow: '0 0 24px -10px rgba(139, 92, 246, 0.78)',
+    }
+  }
+
+  if (equippedAvatarItemId === 'sparkle_effect') {
+    return {
+      borderColor: 'rgba(94, 247, 226, 0.58)',
+      boxShadow: '0 0 22px -10px rgba(94, 247, 226, 0.72)',
+    }
+  }
+
+  return {
+    borderColor: 'rgba(125, 211, 252, 0.45)',
+  }
 }
 
 function StatTile({
@@ -86,6 +122,7 @@ export function DashboardPage() {
   const [checklists, setChecklists] = useState<ChecklistItem[]>([])
   const [streak, setStreak] = useState<Streak | null>(null)
   const [progress, setProgress] = useState<UserProgress | null>(null)
+  const [equippedItems, setEquippedItems] = useState<EquippedItems | null>(null)
   const [loading, setLoading] = useState(true)
   const [showOnboarding, setShowOnboarding] = useState(false)
 
@@ -118,7 +155,14 @@ export function DashboardPage() {
       }
     })
 
-    return () => unsubscribe()
+    const unsubscribeInventory = subscribeToUserInventory(user.id, (updatedInventory) => {
+      setEquippedItems(updatedInventory.equippedItems)
+    })
+
+    return () => {
+      unsubscribe()
+      unsubscribeInventory()
+    }
   }, [user])
 
   async function loadDashboardData() {
@@ -128,16 +172,18 @@ export function DashboardPage() {
       setLoading(true)
 
       const today = new Date().toISOString().split('T')[0]
-      const [goalsData, checklistsData, streakData, progressData] = await Promise.all([
+      const [goalsData, checklistsData, streakData, progressData, inventoryData] = await Promise.all([
         getUserGoals(user.id),
         getUserChecklists(user.id, today),
         getUserStreak(user.id),
         getUserProgress(user.id),
+        getUserInventory(),
       ])
 
       setGoals(goalsData)
       setChecklists(checklistsData)
       setStreak(streakData)
+      setEquippedItems(inventoryData.equippedItems)
 
       if (progressData) {
         setProgress(progressData)
@@ -270,6 +316,8 @@ export function DashboardPage() {
   const completedGoalsCount = goals.filter((goal) => goal.completed).length
   const activeGoalsCount = goals.filter((goal) => !goal.completed).length
   const firstName = (user?.displayName || user?.email || 'Streamer').split(' ')[0]
+  const equippedBadge = equippedItems?.badge ? getItemById(equippedItems.badge) : null
+  const avatarFrameStyle = getDashboardAvatarFrameStyle(equippedItems?.avatar)
 
   if (loading) {
     return (
@@ -310,6 +358,20 @@ export function DashboardPage() {
                     Premium
                   </PremiumBadge>
                 )}
+                {equippedBadge && (
+                  <span
+                    className="inline-flex max-w-full items-center gap-1 rounded-full border px-2 py-1 text-[11px] font-semibold"
+                    style={{
+                      borderColor: 'rgba(94, 247, 226, 0.32)',
+                      background: 'rgba(8, 17, 33, 0.7)',
+                      color: '#b9fff9',
+                    }}
+                    title={equippedBadge.name}
+                  >
+                    <IconMapper icon={equippedBadge.icon} size={12} />
+                    <span className="truncate">{equippedBadge.name}</span>
+                  </span>
+                )}
               </div>
 
               <h1 className="mt-2 text-4xl font-extrabold tracking-tight md:text-5xl">
@@ -342,7 +404,7 @@ export function DashboardPage() {
 
                 <div
                   className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border"
-                  style={{ borderColor: 'rgba(125, 211, 252, 0.45)' }}
+                  style={avatarFrameStyle}
                 >
                   {user.photoURL ? (
                     <img src={user.photoURL} alt="" className="h-full w-full object-cover" />

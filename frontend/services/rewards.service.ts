@@ -3,6 +3,7 @@ import { getRewardPowerupModifiers } from './inventory.service'
 import { reportError } from './logger.service'
 import { addCoins, addXP, checkAchievements, getUserStats, type Achievement } from './progress.service'
 import { recordDailyActivity } from './activity.service'
+import { registerStreakActivity, type RegisterStreakActivityResult } from './streaks.service'
 
 export interface RewardRule {
   xp: number
@@ -149,7 +150,7 @@ export async function applyDocumentReward(params: {
   alreadyRewarded: boolean
   rule: RewardRule
   markRewarded?: () => Promise<void>
-}): Promise<{ awarded: boolean; reason?: string; achievements: Achievement[] }> {
+}): Promise<{ awarded: boolean; reason?: string; achievements: Achievement[]; streak?: RegisterStreakActivityResult }> {
   if (params.alreadyRewarded) {
     return { awarded: false, reason: 'already_rewarded', achievements: [] }
   }
@@ -203,12 +204,15 @@ export async function applyDocumentReward(params: {
       await params.markRewarded()
     }
 
+    const streak = await registerStreakActivity(params.userId)
+
     const stats = await getUserStats(params.userId)
     const achievements = await checkAchievements(params.userId, stats)
 
     return {
       awarded: true,
       achievements,
+      streak,
     }
   } catch (error) {
     reportError('reward_apply_failed', error, {

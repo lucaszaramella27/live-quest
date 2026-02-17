@@ -15,13 +15,19 @@ import {
   Zap,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { getUserInventory, purchaseShopItem, type ActivePowerup } from '@/services/inventory.service'
+import {
+  getUserInventory,
+  purchaseShopItem,
+  subscribeToUserInventory,
+  type ActivePowerup,
+} from '@/services/inventory.service'
 import { subscribeToUserProgress, type UserProgress } from '@/services/progress.service'
 import {
   SHOP_ITEMS,
   canPurchaseItem,
   getCategoryIcon,
   getCategoryName,
+  getItemById,
   getRarityColor,
   getRarityGradient,
   type ShopItem,
@@ -68,7 +74,15 @@ export function ShopPage() {
       }
     })
 
-    return () => unsubscribe()
+    const unsubscribeInventory = subscribeToUserInventory(user.id, (inventory) => {
+      setPurchasedItems(inventory.purchasedItemIds)
+      setActivePowerups(inventory.activePowerups)
+    })
+
+    return () => {
+      unsubscribe()
+      unsubscribeInventory()
+    }
   }, [user])
 
   async function loadData() {
@@ -109,6 +123,8 @@ export function ShopPage() {
           setToastMessage('Saldo insuficiente para este item.')
         } else if (result.reason === 'premium_required') {
           setToastMessage('Item exclusivo para usuarios Premium.')
+        } else if (result.reason === 'item_already_owned') {
+          setToastMessage('Voce ja possui este item.')
         } else if (result.reason === 'backend_unavailable') {
           setToastMessage('Compra indisponivel no ambiente local sem backend ativo.')
         } else {
@@ -175,6 +191,18 @@ export function ShopPage() {
   const filteredItems = selectedCategory === 'all'
     ? SHOP_ITEMS
     : SHOP_ITEMS.filter((item) => item.category === selectedCategory)
+
+  function getPowerupLabel(powerup: ActivePowerup): string {
+    const item = getItemById(powerup.itemId)
+    const itemName = item?.name || powerup.itemId
+
+    if (powerup.type === 'streak_freeze') {
+      const uses = Math.max(1, Math.floor(powerup.value))
+      return `${itemName} (${uses} uso${uses > 1 ? 's' : ''})`
+    }
+
+    return itemName
+  }
 
   if (loading) {
     return (
@@ -259,7 +287,7 @@ export function ShopPage() {
                 }}
               >
                 <Zap className="h-3.5 w-3.5 text-cyan-200" />
-                {powerup.itemId}
+                {getPowerupLabel(powerup)}
               </span>
             ))}
           </div>

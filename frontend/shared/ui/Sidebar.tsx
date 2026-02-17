@@ -22,15 +22,19 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/features/auth/context/AuthContext'
 import { signOut } from '@/services/auth.service'
+import { type EquippedItems } from '@/services/inventory.service'
 import { reportError } from '@/services/logger.service'
 import type { UserProgress } from '@/services/progress.service'
+import { getItemById } from '@/services/shop.service'
 import { Button } from './Button'
+import { IconMapper } from './IconMapper'
 import { Modal } from './Modal'
 import { PetAvatar } from './PetAvatar'
 import { XPBar } from './XPBar'
 
 interface SidebarProps {
   progress: UserProgress | null
+  equippedItems?: EquippedItems | null
   onClose?: () => void
 }
 
@@ -41,7 +45,7 @@ interface NavItem {
   badge?: string
 }
 
-export function Sidebar({ progress, onClose }: SidebarProps) {
+export function Sidebar({ progress, equippedItems, onClose }: SidebarProps) {
   const [showLogoutModal, setShowLogoutModal] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(false)
   const navigate = useNavigate()
@@ -68,6 +72,7 @@ export function Sidebar({ progress, onClose }: SidebarProps) {
   const level = progress?.level || 1
   const currentXP = progress?.xp || 0
   const coins = progress?.coins || 0
+  const equippedBadge = equippedItems?.badge ? getItemById(equippedItems.badge) : null
 
   const handleNavigation = (path: string) => {
     navigate(path)
@@ -107,7 +112,7 @@ export function Sidebar({ progress, onClose }: SidebarProps) {
           {!isCollapsed ? (
             <div className="space-y-4 pr-10">
               <div className="flex justify-center">
-                <PetAvatar level={level} size="lg" />
+                <PetAvatar level={level} size="lg" equippedAvatarItemId={equippedItems?.avatar || null} />
               </div>
 
               <div className="text-center">
@@ -120,6 +125,20 @@ export function Sidebar({ progress, onClose }: SidebarProps) {
                 <p className="text-xs font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--color-text-secondary)' }}>
                   Nivel {level}
                 </p>
+                {equippedBadge && (
+                  <div
+                    className="mx-auto mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border px-2 py-1 text-[10px] font-semibold"
+                    style={{
+                      borderColor: 'rgba(94, 247, 226, 0.3)',
+                      background: 'rgba(8, 17, 33, 0.75)',
+                      color: '#b9fff9',
+                    }}
+                    title={equippedBadge.name}
+                  >
+                    <IconMapper icon={equippedBadge.icon} size={12} />
+                    <span className="truncate">{equippedBadge.name}</span>
+                  </div>
+                )}
               </div>
 
               <XPBar xp={currentXP} level={level} />
@@ -137,7 +156,7 @@ export function Sidebar({ progress, onClose }: SidebarProps) {
             </div>
           ) : (
             <div className="mt-8 flex flex-col items-center gap-3">
-              <PetAvatar level={level} size="sm" showLevel={false} />
+              <PetAvatar level={level} size="sm" showLevel={false} equippedAvatarItemId={equippedItems?.avatar || null} />
               <span className="text-xs font-bold" style={{ color: 'var(--color-primary)' }}>
                 Lv {level}
               </span>

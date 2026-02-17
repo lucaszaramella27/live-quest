@@ -5,6 +5,7 @@ import { Archive, Check, Crown, Package, ShieldCheck, Sparkles, Zap } from 'luci
 import {
   equipInventoryItem,
   getUserInventory,
+  subscribeToUserInventory,
   unequipInventorySlot,
   type ActivePowerup,
   type InventoryEquipSlot,
@@ -37,6 +38,13 @@ export function InventoryPage() {
   useEffect(() => {
     if (!user) return
     void loadInventory()
+
+    const unsubscribe = subscribeToUserInventory(user.id, (updatedInventory) => {
+      setInventory(updatedInventory)
+      setLoading(false)
+    })
+
+    return () => unsubscribe()
   }, [user])
 
   async function loadInventory() {
@@ -314,7 +322,7 @@ export function InventoryPage() {
                         <div className="mt-2 space-y-1">
                           {activeInstances.map((instance: ActivePowerup) => (
                             <p key={`${instance.itemId}:${instance.activatedAt}`} className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
-                              Ativo {formatPowerupExpiration(instance.expiresAt)}
+                              {formatPowerupStatus(instance)}
                             </p>
                           ))}
                         </div>
@@ -394,4 +402,13 @@ function formatPowerupExpiration(expiresAt: string | null): string {
   const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
   if (diffHours > 0) return `por ${diffHours}h ${diffMinutes}m`
   return `por ${diffMinutes}m`
+}
+
+function formatPowerupStatus(powerup: ActivePowerup): string {
+  if (powerup.type === 'streak_freeze') {
+    const uses = Math.max(1, Math.floor(powerup.value))
+    return `${uses} uso${uses > 1 ? 's' : ''} restante${uses > 1 ? 's' : ''}`
+  }
+
+  return `Ativo ${formatPowerupExpiration(powerup.expiresAt)}`
 }
