@@ -71,35 +71,103 @@ const GOOGLE_GSI_SCRIPT_URL = 'https://accounts.google.com/gsi/client'
 const GOOGLE_OAUTH_SCOPE = 'openid email profile'
 
 let googleScriptLoader: Promise<void> | null = null
+let memorySession: AuthSession | null = null
+let cachedSessionStorages: Storage[] | null = null
 
 function createError(message: string, code?: string): GenericError {
   return { message, code }
 }
 
-function readStoredSession(): AuthSession | null {
-  if (typeof window === 'undefined') return null
-
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
-
-    const parsed = JSON.parse(raw) as AuthSession
-    if (!parsed || !parsed.access_token || !parsed.user?.id) return null
-    return parsed
-  } catch {
-    return null
+function getSessionStorages(): Storage[] {
+  if (cachedSessionStorages) {
+    return cachedSessionStorages
   }
+
+  if (typeof window === 'undefined') {
+    cachedSessionStorages = []
+    return cachedSessionStorages
+  }
+
+  const storages: Storage[] = []
+  const candidates: Storage[] = [window.localStorage, window.sessionStorage]
+
+  for (const storage of candidates) {
+    try {
+      const probeKey = `${STORAGE_KEY}:probe`
+      storage.setItem(probeKey, '1')
+      storage.removeItem(probeKey)
+      storages.push(storage)
+    } catch {
+      // Ignore storage engines that are blocked/unavailable.
+    }
+  }
+
+  cachedSessionStorages = storages
+  return cachedSessionStorages
+}
+
+function readStoredSession(): AuthSession | null {
+  if (typeof window === 'undefined') return memorySession
+
+  for (const storage of getSessionStorages()) {
+    let raw: string | null = null
+
+    try {
+      raw = storage.getItem(STORAGE_KEY)
+    } catch {
+      continue
+    }
+
+    if (!raw) continue
+
+    try {
+      const parsed = JSON.parse(raw) as AuthSession
+      if (!parsed || !parsed.access_token || !parsed.user?.id) {
+        continue
+      }
+      memorySession = parsed
+      return parsed
+    } catch {
+      continue
+    }
+  }
+
+  return memorySession
 }
 
 function writeStoredSession(session: AuthSession | null): void {
-  if (typeof window === 'undefined') return
-
   if (!session) {
-    window.localStorage.removeItem(STORAGE_KEY)
+    clearStoredSession()
     return
   }
 
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session))
+  memorySession = session
+
+  if (typeof window === 'undefined') return
+
+  for (const storage of getSessionStorages()) {
+    try {
+      storage.setItem(STORAGE_KEY, JSON.stringify(session))
+    } catch {
+      // Ignore storage write failures.
+    }
+  }
+}
+
+function clearStoredSession(): void {
+  memorySession = null
+
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  for (const storage of getSessionStorages()) {
+    try {
+      storage.removeItem(STORAGE_KEY)
+    } catch {
+      // Ignore storage removal failures.
+    }
+  }
 }
 
 const authListeners = new Set<AuthStateListener>()

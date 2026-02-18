@@ -56,7 +56,28 @@ const USERS_SAFE_SELECT_COLUMNS = [
 ]
 const USERS_ALLOWED_SELECT_COLUMNS = new Set(USERS_SAFE_SELECT_COLUMNS)
 const USERS_FORBIDDEN_WRITE_COLUMNS = new Set(['password_hash', 'is_admin'])
+const USERS_NON_ADMIN_FORBIDDEN_WRITE_COLUMNS = new Set(['is_premium'])
 const USERS_FORBIDDEN_SELECT_COLUMNS = new Set(['password_hash'])
+
+const USER_PROGRESS_NON_ADMIN_FORBIDDEN_WRITE_COLUMNS = new Set(['is_premium', 'premium_expires_at'])
+
+const NON_ADMIN_READ_ONLY_TABLES = new Set([
+  'user_progress',
+  'daily_activity',
+  'xp_ledger',
+  'reward_daily',
+  'user_inventories',
+  'shop_stock',
+  'user_challenges',
+  'streaks',
+  'twitch_integrations',
+])
+
+const NON_ADMIN_FORBIDDEN_WRITE_COLUMNS_BY_TABLE = new Map([
+  ['goals', new Set(['rewarded_at', 'created_at'])],
+  ['checklists', new Set(['rewarded_at', 'created_at'])],
+  ['calendar_events', new Set(['rewarded_at', 'created_at'])],
+])
 
 const USER_PROGRESS_PUBLIC_COLUMNS = new Set([
   'user_id',
@@ -371,14 +392,30 @@ router.post('/', async (req, res) => {
     }
 
     // Global table restrictions.
-    if (!isAdmin && table === 'shop_stock' && operation !== 'select' && operation !== 'upsert' && operation !== 'insert') {
-      throw createHttpError(403, 'Forbidden: shop stock is read-only for non-admin users.', 'forbidden')
+    if (!isAdmin && operation !== 'select' && NON_ADMIN_READ_ONLY_TABLES.has(table)) {
+      throw createHttpError(403, `Forbidden: table "${table}" is read-only for non-admin users.`, 'forbidden')
     }
 
     if (table === 'users') {
       // Always scope users table to the current user unless admin explicitly requests otherwise.
       effectiveFilters = enforceOwnerFilter(effectiveFilters, 'id', authUserId, isAdmin)
       assertNoForbiddenWriteColumns(table, payload, USERS_FORBIDDEN_WRITE_COLUMNS)
+    }
+
+    if (!isAdmin && table === 'users') {
+      assertNoForbiddenWriteColumns(table, payload, USERS_NON_ADMIN_FORBIDDEN_WRITE_COLUMNS)
+    }
+
+    if (!isAdmin && table === 'user_progress') {
+      assertNoForbiddenWriteColumns(table, payload, USER_PROGRESS_NON_ADMIN_FORBIDDEN_WRITE_COLUMNS)
+    }
+
+    if (!isAdmin && NON_ADMIN_FORBIDDEN_WRITE_COLUMNS_BY_TABLE.has(table)) {
+      assertNoForbiddenWriteColumns(
+        table,
+        payload,
+        NON_ADMIN_FORBIDDEN_WRITE_COLUMNS_BY_TABLE.get(table)
+      )
     }
 
     let effectiveSelect = select

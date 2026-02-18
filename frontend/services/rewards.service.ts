@@ -1,9 +1,7 @@
-import { backendClient } from './backend-client'
-import { getRewardPowerupModifiers } from './inventory.service'
+import { callBackendFunction } from './functions-api.service'
+import { ACHIEVEMENTS, type Achievement } from './progress.service'
+import type { RegisterStreakActivityResult } from './streaks.service'
 import { reportError } from './logger.service'
-import { addCoins, addXP, checkAchievements, getUserStats, type Achievement } from './progress.service'
-import { recordDailyActivity } from './activity.service'
-import { registerStreakActivity, type RegisterStreakActivityResult } from './streaks.service'
 
 export interface RewardRule {
   xp: number
@@ -33,195 +31,60 @@ export const EVENT_REWARD_RULE: RewardRule = {
   minAgeMs: 0,
 }
 
-interface RewardDailyRow {
+interface BackendAchievement {
   id: string
-  user_id: string
-  date: string
-  task_count: number | null
-  goal_count: number | null
-  event_count: number | null
-  xp_total: number | null
-  coins_total: number | null
-  created_at: string | null
-  updated_at: string | null
+  name: string
+  description: string
+  icon: Achievement['icon']
+  rarity: Achievement['rarity']
+  xpReward: number
 }
 
-function getTodayIsoDate(): string {
-  return new Date().toISOString().slice(0, 10)
+interface ApplyDocumentRewardBackendResponse {
+  awarded: boolean
+  reason?: string
+  achievements?: BackendAchievement[]
+  streak?: RegisterStreakActivityResult
 }
 
-function getCounterField(sourceType: 'task' | 'goal' | 'event'): 'task_count' | 'goal_count' | 'event_count' {
-  if (sourceType === 'task') return 'task_count'
-  if (sourceType === 'goal') return 'goal_count'
-  return 'event_count'
-}
+function mapAchievement(raw: BackendAchievement): Achievement {
+  const known = ACHIEVEMENTS.find((achievement) => achievement.id === raw.id)
+  if (known) return known
 
-function isUniqueViolation(error: unknown): boolean {
-  if (!error || typeof error !== 'object') return false
-  const maybeCode = (error as { code?: unknown }).code
-  return maybeCode === '23505'
-}
-
-async function upsertRewardDaily(
-  userId: string,
-  sourceType: 'task' | 'goal' | 'event',
-  xp: number,
-  coins: number
-): Promise<void> {
-  const today = getTodayIsoDate()
-  const rowId = `${userId}_${today}`
-  const counterField = getCounterField(sourceType)
-
-  const { data: current, error: currentError } = await backendClient
-    .from('reward_daily')
-    .select('*')
-    .eq('id', rowId)
-    .maybeSingle<RewardDailyRow>()
-
-  if (currentError) throw currentError
-
-  const nowIso = new Date().toISOString()
-
-  if (!current) {
-    const base = {
-      id: rowId,
-      user_id: userId,
-      date: today,
-      task_count: 0,
-      goal_count: 0,
-      event_count: 0,
-      xp_total: 0,
-      coins_total: 0,
-      created_at: nowIso,
-      updated_at: nowIso,
-    }
-
-    const { error: insertError } = await backendClient.from('reward_daily').insert({
-      ...base,
-      [counterField]: 1,
-      xp_total: xp,
-      coins_total: coins,
-    })
-
-    if (insertError) throw insertError
-    return
+  return {
+    id: raw.id,
+    name: raw.name,
+    description: raw.description,
+    icon: raw.icon,
+    rarity: raw.rarity,
+    xpReward: Number(raw.xpReward || 0),
+    condition: () => false,
   }
-
-  const { error: updateError } = await backendClient
-    .from('reward_daily')
-    .update({
-      [counterField]: Number(current[counterField] ?? 0) + 1,
-      xp_total: Number(current.xp_total ?? 0) + xp,
-      coins_total: Number(current.coins_total ?? 0) + coins,
-      updated_at: nowIso,
-    })
-    .eq('id', rowId)
-
-  if (updateError) throw updateError
-}
-
-async function getTodayRewardCount(userId: string, sourceType: 'task' | 'goal' | 'event'): Promise<number> {
-  const today = getTodayIsoDate()
-  const rowId = `${userId}_${today}`
-  const counterField = getCounterField(sourceType)
-
-  const { data, error } = await backendClient
-    .from('reward_daily')
-    .select(counterField)
-    .eq('id', rowId)
-    .maybeSingle<Record<string, number | null>>()
-
-  if (error) throw error
-  return Number(data?.[counterField] ?? 0)
-}
-
-function applyMultiplier(baseValue: number, multiplier: number): number {
-  if (!Number.isFinite(baseValue) || baseValue <= 0) return 0
-
-  const safeMultiplier = Number.isFinite(multiplier) && multiplier > 0 ? multiplier : 1
-  return Math.max(0, Math.round(baseValue * safeMultiplier))
 }
 
 export async function applyDocumentReward(params: {
-  userId: string
   sourceType: 'task' | 'goal' | 'event'
   sourceId: string
-  createdAt: Date
-  alreadyRewarded: boolean
-  rule: RewardRule
-  markRewarded?: () => Promise<void>
 }): Promise<{ awarded: boolean; reason?: string; achievements: Achievement[]; streak?: RegisterStreakActivityResult }> {
-  if (params.alreadyRewarded) {
-    return { awarded: false, reason: 'already_rewarded', achievements: [] }
-  }
-
-  if (params.rule.minAgeMs > 0) {
-    const ageMs = Date.now() - params.createdAt.getTime()
-    if (ageMs < params.rule.minAgeMs) {
-      return { awarded: false, reason: 'cooldown_not_reached', achievements: [] }
-    }
-  }
-
-  const [dailyCount, modifiers] = await Promise.all([
-    getTodayRewardCount(params.userId, params.sourceType),
-    getRewardPowerupModifiers(params.userId),
-  ])
-
-  if (dailyCount >= params.rule.maxPerDay) {
-    return { awarded: false, reason: 'daily_limit_reached', achievements: [] }
-  }
-
-  const awardedXP = applyMultiplier(params.rule.xp, modifiers.xpMultiplier)
-  const awardedCoins = applyMultiplier(params.rule.coins, modifiers.coinMultiplier)
-
-  const ledgerId = `${params.userId}:${params.sourceType}:${params.sourceId}`
-  const nowIso = new Date().toISOString()
-
-  const { error: ledgerError } = await backendClient.from('xp_ledger').insert({
-    id: ledgerId,
-    user_id: params.userId,
-    source_type: params.sourceType,
-    source_id: params.sourceId,
-    xp: awardedXP,
-    coins: awardedCoins,
-    created_at: nowIso,
-  })
-
-  if (ledgerError) {
-    if (isUniqueViolation(ledgerError)) {
-      return { awarded: false, reason: 'already_rewarded', achievements: [] }
-    }
-    throw ledgerError
-  }
-
   try {
-    await addXP(params.userId, awardedXP)
-    await addCoins(params.userId, awardedCoins)
-    await upsertRewardDaily(params.userId, params.sourceType, awardedXP, awardedCoins)
-    await recordDailyActivity(params.userId, params.sourceType, awardedXP, awardedCoins)
-
-    if (params.markRewarded) {
-      await params.markRewarded()
-    }
-
-    const streak = await registerStreakActivity(params.userId)
-
-    const stats = await getUserStats(params.userId)
-    const achievements = await checkAchievements(params.userId, stats)
-
-    return {
-      awarded: true,
-      achievements,
-      streak,
-    }
-  } catch (error) {
-    reportError('reward_apply_failed', error, {
-      userId: params.userId,
+    const response = await callBackendFunction<ApplyDocumentRewardBackendResponse>('applyDocumentReward', {
       sourceType: params.sourceType,
       sourceId: params.sourceId,
     })
 
-    await backendClient.from('xp_ledger').delete().eq('id', ledgerId)
+    return {
+      awarded: response.awarded === true,
+      reason: typeof response.reason === 'string' ? response.reason : undefined,
+      achievements: Array.isArray(response.achievements)
+        ? response.achievements.map((achievement) => mapAchievement(achievement))
+        : [],
+      streak: response.streak,
+    }
+  } catch (error) {
+    reportError('reward_apply_failed', error, {
+      sourceType: params.sourceType,
+      sourceId: params.sourceId,
+    })
     throw error
   }
 }

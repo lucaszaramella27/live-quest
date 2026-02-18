@@ -1,5 +1,5 @@
 import { backendClient } from './backend-client'
-import { applyDocumentReward, EVENT_REWARD_RULE } from './rewards.service'
+import { applyDocumentReward } from './rewards.service'
 import type { Achievement } from './progress.service'
 import { toDateOrNow, toDateOrNull } from './date-utils.service'
 
@@ -58,7 +58,6 @@ export async function createEvent(
   userId: string,
   event: Omit<CalendarEvent, 'id' | 'userId' | 'createdAt' | 'rewardedAt'>
 ): Promise<{ event: CalendarEvent; achievements: Achievement[] }> {
-  const nowIso = new Date().toISOString()
   const { data: createdRow, error: createError } = await backendClient
     .from('calendar_events')
     .insert({
@@ -67,8 +66,6 @@ export async function createEvent(
       day: event.day,
       time: event.time,
       game: event.game,
-      rewarded_at: null,
-      created_at: nowIso,
     })
     .select('*')
     .single<CalendarEventRow>()
@@ -78,20 +75,8 @@ export async function createEvent(
   }
 
   const rewardResult = await applyDocumentReward({
-    userId,
     sourceType: 'event',
     sourceId: createdRow.id,
-    createdAt: toDateOrNow(createdRow.created_at),
-    alreadyRewarded: Boolean(createdRow.rewarded_at),
-    rule: EVENT_REWARD_RULE,
-    markRewarded: async () => {
-      const { error } = await backendClient
-        .from('calendar_events')
-        .update({ rewarded_at: new Date().toISOString() })
-        .eq('id', createdRow.id)
-
-      if (error) throw error
-    },
   })
 
   const { data: refreshedRow, error: refreshError } = await backendClient

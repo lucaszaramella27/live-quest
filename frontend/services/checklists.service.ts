@@ -1,5 +1,5 @@
 import { backendClient } from './backend-client'
-import { applyDocumentReward, TASK_REWARD_RULE } from './rewards.service'
+import { applyDocumentReward } from './rewards.service'
 import type { Achievement } from './progress.service'
 import { toDateOrNow, toDateOrNull } from './date-utils.service'
 
@@ -63,18 +63,14 @@ export async function createChecklistItem(
   time: string,
   date: string
 ): Promise<ChecklistItem> {
-  const nowIso = new Date().toISOString()
   const { data, error } = await backendClient
     .from('checklists')
     .insert({
       user_id: userId,
       task,
       completed: false,
-      completed_at: null,
-      rewarded_at: null,
       time,
       date,
-      created_at: nowIso,
     })
     .select('*')
     .single<ChecklistRow>()
@@ -122,26 +118,8 @@ export async function updateChecklistItem(itemId: string, data: Partial<Checklis
   }
 
   const rewardResult = await applyDocumentReward({
-    userId: itemRow.user_id,
     sourceType: 'task',
     sourceId: itemId,
-    createdAt: toDateOrNow(itemRow.created_at),
-    alreadyRewarded: Boolean(itemRow.rewarded_at),
-    rule: TASK_REWARD_RULE,
-    markRewarded: async () => {
-      const nowIso = new Date().toISOString()
-      const { error } = await backendClient
-        .from('checklists')
-        .update({
-          rewarded_at: nowIso,
-          completed_at: itemRow.completed_at || nowIso,
-        })
-        .eq('id', itemId)
-
-      if (error) {
-        throw error
-      }
-    },
   })
 
   return rewardResult.achievements

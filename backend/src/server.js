@@ -1,9 +1,11 @@
 import 'dotenv/config'
+import crypto from 'node:crypto'
 import cors from 'cors'
 import express from 'express'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import { authRouter } from './routes/auth.js'
+import { functionsRouter } from './routes/functions.js'
 import { queryRouter } from './routes/query.js'
 import { requireAuth } from './auth.js'
 
@@ -38,6 +40,30 @@ app.use(
 )
 app.use(express.json({ limit: '1mb' }))
 
+app.use((req, res, next) => {
+  const requestId = crypto.randomUUID()
+  const startedAt = Date.now()
+  req.requestId = requestId
+  res.setHeader('x-request-id', requestId)
+
+  res.on('finish', () => {
+    const durationMs = Date.now() - startedAt
+    // eslint-disable-next-line no-console
+    console.log(
+      JSON.stringify({
+        level: 'info',
+        requestId,
+        method: req.method,
+        path: req.originalUrl || req.url,
+        statusCode: res.statusCode,
+        durationMs,
+      })
+    )
+  })
+
+  next()
+})
+
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 60,
@@ -52,6 +78,13 @@ const queryLimiter = rateLimit({
   legacyHeaders: false,
 })
 
+const functionsLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+})
+
 app.get('/healthz', (_req, res) => {
   res.json({
     status: 'ok',
@@ -61,18 +94,23 @@ app.get('/healthz', (_req, res) => {
 
 app.use('/api/auth', authLimiter, authRouter)
 app.use('/api/db/query', queryLimiter, requireAuth, queryRouter)
-
-app.post('/api/functions/:functionName', requireAuth, (req, res) => {
-  const { functionName } = req.params
-
-  res.status(501).json({
-    error: `Function "${functionName}" is not implemented in backend yet.`,
-  })
-})
+app.use('/api/functions', functionsLimiter, requireAuth, functionsRouter)
 
 app.use((error, _req, res, _next) => {
+  const requestId = _req.requestId || ''
+  // eslint-disable-next-line no-console
+  console.error(
+    JSON.stringify({
+      level: 'error',
+      requestId,
+      message: error?.message || 'Unexpected backend error.',
+      stack: isProd ? undefined : error?.stack,
+    })
+  )
+
   res.status(500).json({
     error: error?.message || 'Unexpected backend error.',
+    requestId,
   })
 })
 

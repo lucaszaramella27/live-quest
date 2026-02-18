@@ -103,7 +103,8 @@ export function PlansPage() {
 
     setActivating(true)
     try {
-      await activatePremium(user.id, 'lifetime')
+      const success = await activatePremium(user.id, 'lifetime')
+      if (!success) throw new Error('activate_premium_failed')
       await loadProgress()
       setToast({ show: true, message: 'Premium ativado para ambiente interno.', type: 'success' })
     } catch (error) {

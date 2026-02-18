@@ -108,7 +108,8 @@ export function AdminPage() {
     if (!userId.trim()) return
     await runWithRefresh(
       async () => {
-        await activatePremium(userId.trim(), 'lifetime')
+        const success = await activatePremium(userId.trim(), 'lifetime')
+        if (!success) throw new Error('activate_premium_failed')
       },
       'Premium ativado com sucesso.',
       'Erro ao ativar premium.'
@@ -119,7 +120,8 @@ export function AdminPage() {
     if (!userId.trim()) return
     await runWithRefresh(
       async () => {
-        await deactivatePremium(userId.trim())
+        const success = await deactivatePremium(userId.trim())
+        if (!success) throw new Error('deactivate_premium_failed')
       },
       'Premium removido com sucesso.',
       'Erro ao remover premium.'

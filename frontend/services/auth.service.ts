@@ -98,7 +98,6 @@ async function ensureUserProfile(authUser: AuthProviderUser, displayNameOverride
     email: normalizedEmail,
     display_name: normalizedName,
     photo_url: normalizedPhoto,
-    is_premium: false,
     created_at: now,
   }
 

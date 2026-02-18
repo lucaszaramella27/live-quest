@@ -1,5 +1,5 @@
 import { backendClient } from './backend-client'
-import { applyDocumentReward, GOAL_REWARD_RULE } from './rewards.service'
+import { applyDocumentReward } from './rewards.service'
 import type { Achievement } from './progress.service'
 import { toDateOrNow, toDateOrNull } from './date-utils.service'
 
@@ -54,7 +54,6 @@ export async function getUserGoals(userId: string): Promise<Goal[]> {
 }
 
 export async function createGoal(userId: string, title: string): Promise<Goal> {
-  const nowIso = new Date().toISOString()
   const { data, error } = await backendClient
     .from('goals')
     .insert({
@@ -63,8 +62,6 @@ export async function createGoal(userId: string, title: string): Promise<Goal> {
       progress: 0,
       completed: false,
       completed_at: null,
-      rewarded_at: null,
-      created_at: nowIso,
     })
     .select('*')
     .single<GoalRow>()
@@ -111,26 +108,8 @@ export async function updateGoal(goalId: string, data: Partial<Goal>): Promise<A
   }
 
   const rewardResult = await applyDocumentReward({
-    userId: goalRow.user_id,
     sourceType: 'goal',
     sourceId: goalId,
-    createdAt: toDateOrNow(goalRow.created_at),
-    alreadyRewarded: Boolean(goalRow.rewarded_at),
-    rule: GOAL_REWARD_RULE,
-    markRewarded: async () => {
-      const nowIso = new Date().toISOString()
-      const { error } = await backendClient
-        .from('goals')
-        .update({
-          rewarded_at: nowIso,
-          completed_at: goalRow.completed_at || nowIso,
-        })
-        .eq('id', goalId)
-
-      if (error) {
-        throw error
-      }
-    },
   })
 
   return rewardResult.achievements

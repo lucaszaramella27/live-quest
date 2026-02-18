@@ -1,5 +1,6 @@
 import type { RealtimeChannel } from './backend-client'
 import { backendClient } from './backend-client'
+import { callBackendFunction } from './functions-api.service'
 import type { IconName } from '@/shared/ui'
 import { reportError } from './logger.service'
 import { toDateOrNull, toDateOrNow } from './date-utils.service'
@@ -141,8 +142,6 @@ function toProgressInsert(progress: UserProgress): Record<string, unknown> {
     monthly_xp: progress.monthlyXP,
     user_name: progress.userName,
     user_photo_url: progress.userPhotoURL,
-    is_premium: progress.isPremium,
-    premium_expires_at: progress.premiumExpiresAt ? progress.premiumExpiresAt.toISOString() : null,
     created_at: progress.createdAt.toISOString(),
     updated_at: progress.updatedAt.toISOString(),
   }
@@ -448,8 +447,18 @@ export async function createUserProgress(
   const existing = await getUserProgress(userId)
   if (existing) return existing
 
-  const newProgress = createDefaultUserProgress(userId, userName, userPhotoURL)
-  return upsertProgress(newProgress)
+  await callBackendFunction<{ success: boolean }>('ensureUserProgress', {
+    userId,
+    userName,
+    userPhotoURL,
+  })
+
+  const ensured = await getUserProgress(userId)
+  if (ensured) return ensured
+
+  const fallback = createDefaultUserProgress(userId, userName, userPhotoURL)
+  notifyProgressSubscribers(userId, fallback)
+  return fallback
 }
 
 export async function addXP(
@@ -617,19 +626,21 @@ export async function unlockTitle(userId: string, titleId: string): Promise<bool
 }
 
 export async function setActiveTitle(userId: string, titleId: string | null): Promise<boolean> {
-  const currentProgress = await getUserProgress(userId)
-  if (!currentProgress) return false
+  try {
+    const result = await callBackendFunction<{ success: boolean }>('setActiveTitle', {
+      titleId,
+    })
 
-  const unlockedTitles = currentProgress.unlockedTitles || []
-  if (titleId && !unlockedTitles.includes(titleId)) return false
+    if (result.success) {
+      await refreshUserProgressSubscriptions(userId)
+      return true
+    }
 
-  await upsertProgress({
-    ...currentProgress,
-    activeTitle: titleId,
-    updatedAt: new Date(),
-  })
-
-  return true
+    return false
+  } catch (error) {
+    reportError('Erro ao definir titulo ativo:', error)
+    return false
+  }
 }
 
 // Reset functions for leaderboard periods
@@ -652,33 +663,39 @@ export async function activatePremium(
   userId: string,
   durationDays: number | 'lifetime' = 'lifetime'
 ): Promise<boolean> {
-  const currentProgress = (await getUserProgress(userId)) || (await createUserProgress(userId))
-  const premiumExpiresAt =
-    durationDays === 'lifetime'
-      ? null
-      : new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000)
+  try {
+    if (!(await hasAdminAccess())) return false
 
-  await upsertProgress({
-    ...currentProgress,
-    isPremium: true,
-    premiumExpiresAt,
-    updatedAt: new Date(),
-  })
+    await callBackendFunction<{ success: boolean }>('setPremiumStatus', {
+      userId,
+      isPremium: true,
+      durationDays,
+    })
 
-  return true
+    await refreshUserProgressSubscriptions(userId)
+    return true
+  } catch (error) {
+    reportError('Erro ao ativar premium:', error)
+    return false
+  }
 }
 
 export async function deactivatePremium(userId: string): Promise<boolean> {
-  const currentProgress = (await getUserProgress(userId)) || (await createUserProgress(userId))
+  try {
+    if (!(await hasAdminAccess())) return false
 
-  await upsertProgress({
-    ...currentProgress,
-    isPremium: false,
-    premiumExpiresAt: null,
-    updatedAt: new Date(),
-  })
+    await callBackendFunction<{ success: boolean }>('setPremiumStatus', {
+      userId,
+      isPremium: false,
+      durationDays: 'lifetime',
+    })
 
-  return true
+    await refreshUserProgressSubscriptions(userId)
+    return true
+  } catch (error) {
+    reportError('Erro ao desativar premium:', error)
+    return false
+  }
 }
 
 export function isPremiumActive(progress: UserProgress | null): boolean {
@@ -697,14 +714,12 @@ export function isPremiumActive(progress: UserProgress | null): boolean {
 export async function setUserXP(userId: string, amount: number): Promise<boolean> {
   try {
     if (!(await hasAdminAccess())) return false
-    const currentProgress = (await getUserProgress(userId)) || (await createUserProgress(userId))
-
-    await upsertProgress({
-      ...currentProgress,
-      xp: Math.max(0, amount),
-      level: getLevelFromXP(Math.max(0, amount)),
-      updatedAt: new Date(),
+    const result = await callBackendFunction<{ success: boolean }>('setUserXP', {
+      userId,
+      amount: Math.max(0, Math.floor(amount)),
     })
+    if (!result.success) return false
+    await refreshUserProgressSubscriptions(userId)
 
     return true
   } catch (error) {
@@ -716,13 +731,12 @@ export async function setUserXP(userId: string, amount: number): Promise<boolean
 export async function setUserCoins(userId: string, amount: number): Promise<boolean> {
   try {
     if (!(await hasAdminAccess())) return false
-    const currentProgress = (await getUserProgress(userId)) || (await createUserProgress(userId))
-
-    await upsertProgress({
-      ...currentProgress,
-      coins: Math.max(0, amount),
-      updatedAt: new Date(),
+    const result = await callBackendFunction<{ success: boolean }>('setUserCoins', {
+      userId,
+      amount: Math.max(0, Math.floor(amount)),
     })
+    if (!result.success) return false
+    await refreshUserProgressSubscriptions(userId)
 
     return true
   } catch (error) {
@@ -734,15 +748,12 @@ export async function setUserCoins(userId: string, amount: number): Promise<bool
 export async function setUserLevel(userId: string, level: number): Promise<boolean> {
   try {
     if (!(await hasAdminAccess())) return false
-    const currentProgress = (await getUserProgress(userId)) || (await createUserProgress(userId))
-    const safeLevel = Math.max(1, Math.floor(level))
-
-    await upsertProgress({
-      ...currentProgress,
-      level: safeLevel,
-      xp: getTotalXPForLevel(safeLevel),
-      updatedAt: new Date(),
+    const result = await callBackendFunction<{ success: boolean }>('setUserLevel', {
+      userId,
+      level: Math.max(1, Math.floor(level)),
     })
+    if (!result.success) return false
+    await refreshUserProgressSubscriptions(userId)
 
     return true
   } catch (error) {
@@ -754,20 +765,11 @@ export async function setUserLevel(userId: string, level: number): Promise<boole
 export async function resetUserProgress(userId: string): Promise<boolean> {
   try {
     if (!(await hasAdminAccess())) return false
-    const currentProgress = (await getUserProgress(userId)) || (await createUserProgress(userId))
-
-    await upsertProgress({
-      ...currentProgress,
-      xp: 0,
-      level: 1,
-      coins: 0,
-      achievements: [],
-      unlockedTitles: [],
-      activeTitle: null,
-      weeklyXP: 0,
-      monthlyXP: 0,
-      updatedAt: new Date(),
+    const result = await callBackendFunction<{ success: boolean }>('resetUserProgress', {
+      userId,
     })
+    if (!result.success) return false
+    await refreshUserProgressSubscriptions(userId)
 
     return true
   } catch (error) {

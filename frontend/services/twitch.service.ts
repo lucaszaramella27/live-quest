@@ -159,33 +159,15 @@ export async function saveTwitchIntegration(
   userId: string,
   integration: Pick<TwitchIntegration, 'autoXpOnLive' | 'xpPerHourLive' | 'autoGoalsFromTwitch'>
 ): Promise<void> {
-  const { data: existing, error: existingError } = await backendClient
-    .from('twitch_integrations')
-    .select('user_id')
-    .eq('user_id', userId)
-    .maybeSingle<{ user_id: string }>()
-
-  if (existingError) {
-    throw existingError
+  if (!userId) {
+    throw new Error('Usuario nao autenticado.')
   }
 
-  if (!existing) {
-    throw new Error('Conecte sua conta Twitch antes de alterar configuracoes.')
-  }
-
-  const { error } = await backendClient
-    .from('twitch_integrations')
-    .update({
-      auto_xp_on_live: integration.autoXpOnLive,
-      auto_goals_from_twitch: integration.autoGoalsFromTwitch,
-      xp_per_hour_live: integration.xpPerHourLive,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('user_id', userId)
-
-  if (error) {
-    throw error
-  }
+  await callBackendFunction<{ success: boolean }>('twitchUpdateSettings', {
+    autoXpOnLive: integration.autoXpOnLive,
+    xpPerHourLive: integration.xpPerHourLive,
+    autoGoalsFromTwitch: integration.autoGoalsFromTwitch,
+  })
 }
 
 export function subscribeToTwitchIntegration(

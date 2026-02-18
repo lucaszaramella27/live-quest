@@ -60,4 +60,5 @@ npm run dev
 
 - `.env` files are ignored by git. Do not commit secrets.
 - The backend enforces per-user access control on DB reads/writes via `/api/db/query`.
+- Billing actions use `/api/functions/createStripeCheckoutSession` and `/api/functions/createStripePortalSession`.
 

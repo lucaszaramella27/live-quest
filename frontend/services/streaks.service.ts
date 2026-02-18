@@ -61,25 +61,12 @@ export async function getUserStreak(userId: string): Promise<Streak> {
   }
 
   if (!data) {
-    const newStreak: Streak = {
+    return {
       userId,
       currentStreak: 0,
       longestStreak: 0,
       lastCheckin: null,
     }
-
-    const { error: insertError } = await backendClient.from('streaks').insert({
-      user_id: userId,
-      current_streak: 0,
-      longest_streak: 0,
-      last_checkin: null,
-    })
-
-    if (insertError) {
-      throw insertError
-    }
-
-    return newStreak
   }
 
   return mapStreakRow(data)

@@ -34,6 +34,12 @@ const DEV_FALLBACK_ENDPOINTS = new Set<string>([
   'purchaseShopItem',
   'getWeeklyChallenges',
   'claimWeeklyChallengeReward',
+  'applyDocumentReward',
+  'twitchUpdateSettings',
+  'setUserXP',
+  'setUserCoins',
+  'setUserLevel',
+  'resetUserProgress',
 ])
 
 interface BackendErrorPayload {
@@ -92,6 +98,16 @@ function getDevFallbackResponse<T>(endpoint: string): T | null {
       reason: 'backend_unavailable',
       achievements: [],
     },
+    applyDocumentReward: {
+      awarded: false,
+      reason: 'backend_unavailable',
+      achievements: [],
+    },
+    twitchUpdateSettings: { success: false },
+    setUserXP: { success: false },
+    setUserCoins: { success: false },
+    setUserLevel: { success: false },
+    resetUserProgress: { success: false },
     healthz: {
       status: 'dev-fallback',
       timestamp: `${getTodayIsoDate()}T00:00:00.000Z`,
