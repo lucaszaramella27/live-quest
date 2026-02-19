@@ -40,6 +40,18 @@ const DEV_FALLBACK_ENDPOINTS = new Set<string>([
   'setUserCoins',
   'setUserLevel',
   'resetUserProgress',
+  'addXP',
+  'addCoins',
+  'spendCoins',
+  'unlockAchievement',
+  'unlockTitle',
+  'resetWeeklyXP',
+  'resetMonthlyXP',
+  'recordDailyActivity',
+  'addDailyActivityRewards',
+  'updateStreak',
+  'registerStreakActivity',
+  'consumeStreakFreezeUses',
 ])
 
 interface BackendErrorPayload {
@@ -108,6 +120,66 @@ function getDevFallbackResponse<T>(endpoint: string): T | null {
     setUserCoins: { success: false },
     setUserLevel: { success: false },
     resetUserProgress: { success: false },
+    addXP: {
+      newXP: 0,
+      newLevel: 1,
+      leveledUp: false,
+    },
+    addCoins: {
+      newBalance: 0,
+    },
+    spendCoins: {
+      success: false,
+      newBalance: 0,
+    },
+    unlockAchievement: {
+      success: false,
+      alreadyUnlocked: false,
+    },
+    unlockTitle: {
+      success: false,
+      alreadyUnlocked: false,
+    },
+    resetWeeklyXP: {
+      success: false,
+      affectedRows: 0,
+    },
+    resetMonthlyXP: {
+      success: false,
+      affectedRows: 0,
+    },
+    recordDailyActivity: {
+      success: false,
+    },
+    addDailyActivityRewards: {
+      success: false,
+    },
+    updateStreak: {
+      success: false,
+      streak: {
+        userId: '',
+        currentStreak: 0,
+        longestStreak: 0,
+        lastCheckin: null,
+      },
+    },
+    registerStreakActivity: {
+      streak: {
+        userId: '',
+        currentStreak: 0,
+        longestStreak: 0,
+        lastCheckin: null,
+      },
+      freezeUsed: false,
+      consumedFreezeUses: 0,
+      remainingFreezeUses: 0,
+      resetOccurred: false,
+    },
+    consumeStreakFreezeUses: {
+      success: false,
+      consumedUses: 0,
+      remainingUses: 0,
+    },
     healthz: {
       status: 'dev-fallback',
       timestamp: `${getTodayIsoDate()}T00:00:00.000Z`,

@@ -1,4 +1,3 @@
-import type { RealtimeChannel } from './backend-client'
 import { backendClient } from './backend-client'
 import { callBackendFunction } from './functions-api.service'
 import type { IconName } from '@/shared/ui'
@@ -68,6 +67,21 @@ const FALLBACK_ADMIN_UIDS = (import.meta.env.VITE_ADMIN_UIDS || '')
 const DEFAULT_TITLE_ID = 'novice'
 const progressSubscribers = new Map<string, Set<(progress: UserProgress | null) => void>>()
 
+function normalizeUuid(value: string): string {
+  return String(value || '').trim()
+}
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}
+
+function toIntegerOrNull(value: number, min: number): number | null {
+  if (!Number.isFinite(value)) return null
+  const parsed = Math.floor(value)
+  if (!Number.isInteger(parsed) || parsed < min) return null
+  return parsed
+}
+
 function notifyProgressSubscribers(userId: string, progress: UserProgress | null): void {
   const listeners = progressSubscribers.get(userId)
   if (!listeners || listeners.size === 0) return
@@ -129,24 +143,6 @@ function mapProgressRow(row: UserProgressRow): UserProgress {
   }
 }
 
-function toProgressInsert(progress: UserProgress): Record<string, unknown> {
-  return {
-    user_id: progress.userId,
-    xp: progress.xp,
-    level: progress.level,
-    coins: progress.coins,
-    achievements: progress.achievements,
-    unlocked_titles: progress.unlockedTitles,
-    active_title: progress.activeTitle,
-    weekly_xp: progress.weeklyXP,
-    monthly_xp: progress.monthlyXP,
-    user_name: progress.userName,
-    user_photo_url: progress.userPhotoURL,
-    created_at: progress.createdAt.toISOString(),
-    updated_at: progress.updatedAt.toISOString(),
-  }
-}
-
 async function getProgressRow(userId: string): Promise<UserProgressRow | null> {
   const { data, error } = await backendClient
     .from('user_progress')
@@ -159,22 +155,6 @@ async function getProgressRow(userId: string): Promise<UserProgressRow | null> {
   }
 
   return data
-}
-
-async function upsertProgress(progress: UserProgress): Promise<UserProgress> {
-  const { data, error } = await backendClient
-    .from('user_progress')
-    .upsert(toProgressInsert(progress), { onConflict: 'user_id' })
-    .select('*')
-    .single<UserProgressRow>()
-
-  if (error) {
-    throw error
-  }
-
-  const mapped = mapProgressRow(data)
-  notifyProgressSubscribers(mapped.userId, mapped)
-  return mapped
 }
 
 async function hasAdminAccess(): Promise<boolean> {
@@ -393,49 +373,38 @@ export function subscribeToUserProgress(
 ): () => void {
   registerProgressSubscriber(userId, callback)
 
-  const channelName = `user_progress:${userId}:${Math.random().toString(36).slice(2)}`
-  const channel: RealtimeChannel = backendClient
-    .channel(channelName)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'user_progress',
-        filter: `user_id=eq.${userId}`,
-      },
-      (payload) => {
-        if (payload.eventType === 'DELETE') {
-          notifyProgressSubscribers(userId, null)
-          return
-        }
+  const refresh = () => {
+    void refreshUserProgressSubscriptions(userId)
+      .catch((error) => {
+        reportError('Erro no listener do progresso:', error)
+        notifyProgressSubscribers(userId, null)
+      })
+  }
 
-        const next = payload.new as UserProgressRow | undefined
-        if (!next) {
-          void refreshUserProgressSubscriptions(userId)
-            .catch((error) => {
-              reportError('Erro no listener do progresso:', error)
-              notifyProgressSubscribers(userId, null)
-            })
-          return
-        }
+  refresh()
 
-        notifyProgressSubscribers(userId, mapProgressRow(next))
-      }
-    )
-    .subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        void refreshUserProgressSubscriptions(userId)
-          .catch((error) => {
-            reportError('Erro no listener do progresso:', error)
-            notifyProgressSubscribers(userId, null)
-          })
-      }
-    })
+  const intervalId = typeof window !== 'undefined'
+    ? window.setInterval(refresh, 15000)
+    : null
+
+  const visibilityHandler = () => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      refresh()
+    }
+  }
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', visibilityHandler)
+  }
 
   return () => {
     unregisterProgressSubscriber(userId, callback)
-    void backendClient.removeChannel(channel)
+    if (intervalId !== null && typeof window !== 'undefined') {
+      window.clearInterval(intervalId)
+    }
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', visibilityHandler)
+    }
   }
 }
 
@@ -465,45 +434,34 @@ export async function addXP(
   userId: string,
   amount: number
 ): Promise<{ newXP: number; newLevel: number; leveledUp: boolean }> {
-  const currentProgress = (await getUserProgress(userId)) || (await createUserProgress(userId))
+  const result = await callBackendFunction<{
+    newXP: number
+    newLevel: number
+    leveledUp: boolean
+  }>('addXP', {
+    userId,
+    amount: Number.isFinite(amount) ? Math.floor(amount) : 0,
+  })
 
-  const normalizedAmount = Number.isFinite(amount) ? amount : 0
-  const newXP = Math.max(0, currentProgress.xp + normalizedAmount)
-  const newLevel = getLevelFromXP(newXP)
-  const leveledUp = newLevel > currentProgress.level
-
-  const updated: UserProgress = {
-    ...currentProgress,
-    xp: newXP,
-    level: newLevel,
-    weeklyXP: Math.max(0, currentProgress.weeklyXP + normalizedAmount),
-    monthlyXP: Math.max(0, currentProgress.monthlyXP + normalizedAmount),
-    updatedAt: new Date(),
+  await refreshUserProgressSubscriptions(userId)
+  return {
+    newXP: Number(result?.newXP ?? 0),
+    newLevel: Math.max(1, Number(result?.newLevel ?? 1)),
+    leveledUp: result?.leveledUp === true,
   }
-
-  await upsertProgress(updated)
-
-  return { newXP, newLevel, leveledUp }
 }
 
 export async function unlockAchievement(userId: string, achievementId: string): Promise<boolean> {
-  const currentProgress = (await getUserProgress(userId)) || (await createUserProgress(userId))
-
-  if (currentProgress.achievements.includes(achievementId)) {
-    return false
-  }
-
   const achievement = ACHIEVEMENTS.find((entry) => entry.id === achievementId)
   if (!achievement) return false
 
-  const updated: UserProgress = {
-    ...currentProgress,
-    achievements: [...currentProgress.achievements, achievementId],
-    updatedAt: new Date(),
-  }
-
-  await upsertProgress(updated)
+  const result = await callBackendFunction<{ success: boolean; alreadyUnlocked?: boolean }>('unlockAchievement', {
+    userId,
+    achievementId,
+  })
+  if (!result?.success) return false
   await addXP(userId, achievement.xpReward)
+  await refreshUserProgressSubscriptions(userId)
 
   return true
 }
@@ -575,17 +533,12 @@ export async function getUserStats(userId: string): Promise<UserStats> {
 
 // Coins management
 export async function addCoins(userId: string, amount: number): Promise<number> {
-  const currentProgress = (await getUserProgress(userId)) || (await createUserProgress(userId))
-  const normalizedAmount = Number.isFinite(amount) ? amount : 0
-  const coins = Math.max(0, currentProgress.coins + normalizedAmount)
-
-  await upsertProgress({
-    ...currentProgress,
-    coins,
-    updatedAt: new Date(),
+  const result = await callBackendFunction<{ newBalance: number }>('addCoins', {
+    userId,
+    amount: Number.isFinite(amount) ? Math.floor(amount) : 0,
   })
-
-  return coins
+  await refreshUserProgressSubscriptions(userId)
+  return Math.max(0, Number(result?.newBalance ?? 0))
 }
 
 export async function spendCoins(userId: string, amount: number): Promise<{ success: boolean; newBalance: number }> {
@@ -593,36 +546,32 @@ export async function spendCoins(userId: string, amount: number): Promise<{ succ
     return { success: false, newBalance: 0 }
   }
 
-  const currentProgress = (await getUserProgress(userId)) || (await createUserProgress(userId))
-  if (currentProgress.coins < amount) {
-    return { success: false, newBalance: currentProgress.coins }
-  }
-
-  const newBalance = currentProgress.coins - amount
-  await upsertProgress({
-    ...currentProgress,
-    coins: newBalance,
-    updatedAt: new Date(),
+  const result = await callBackendFunction<{ success: boolean; newBalance: number }>('spendCoins', {
+    userId,
+    amount: Math.max(1, Math.floor(amount)),
   })
 
-  return { success: true, newBalance }
+  await refreshUserProgressSubscriptions(userId)
+  return {
+    success: result?.success === true,
+    newBalance: Math.max(0, Number(result?.newBalance ?? 0)),
+  }
 }
 
 // Titles management
 export async function unlockTitle(userId: string, titleId: string): Promise<boolean> {
-  const currentProgress = await getUserProgress(userId)
-  if (!currentProgress) return false
-
-  const unlockedTitles = currentProgress.unlockedTitles || []
-  if (unlockedTitles.includes(titleId)) return false
-
-  await upsertProgress({
-    ...currentProgress,
-    unlockedTitles: [...unlockedTitles, titleId],
-    updatedAt: new Date(),
+  const result = await callBackendFunction<{ success: boolean; alreadyUnlocked?: boolean }>('unlockTitle', {
+    userId,
+    titleId,
   })
+  await refreshUserProgressSubscriptions(userId)
+  return result?.success === true
+}
 
-  return true
+export async function syncUnlockedTitles(userId: string): Promise<string[]> {
+  const result = await callBackendFunction<{ success: boolean; unlockedTitles?: string[] }>('syncUnlockedTitles')
+  await refreshUserProgressSubscriptions(userId)
+  return Array.isArray(result?.unlockedTitles) ? result.unlockedTitles : []
 }
 
 export async function setActiveTitle(userId: string, titleId: string | null): Promise<boolean> {
@@ -645,15 +594,19 @@ export async function setActiveTitle(userId: string, titleId: string | null): Pr
 
 // Reset functions for leaderboard periods
 export async function resetWeeklyXP(): Promise<void> {
-  const { error } = await backendClient.from('user_progress').update({ weekly_xp: 0 }).gte('weekly_xp', 0)
-  if (error) {
+  try {
+    if (!(await hasAdminAccess())) return
+    await callBackendFunction<{ success: boolean }>('resetWeeklyXP')
+  } catch (error) {
     reportError('Erro ao resetar XP semanal:', error)
   }
 }
 
 export async function resetMonthlyXP(): Promise<void> {
-  const { error } = await backendClient.from('user_progress').update({ monthly_xp: 0 }).gte('monthly_xp', 0)
-  if (error) {
+  try {
+    if (!(await hasAdminAccess())) return
+    await callBackendFunction<{ success: boolean }>('resetMonthlyXP')
+  } catch (error) {
     reportError('Erro ao resetar XP mensal:', error)
   }
 }
@@ -714,12 +667,16 @@ export function isPremiumActive(progress: UserProgress | null): boolean {
 export async function setUserXP(userId: string, amount: number): Promise<boolean> {
   try {
     if (!(await hasAdminAccess())) return false
+    const normalizedUserId = normalizeUuid(userId)
+    const normalizedAmount = toIntegerOrNull(amount, 0)
+    if (!isUuid(normalizedUserId) || normalizedAmount === null) return false
+
     const result = await callBackendFunction<{ success: boolean }>('setUserXP', {
-      userId,
-      amount: Math.max(0, Math.floor(amount)),
+      userId: normalizedUserId,
+      amount: normalizedAmount,
     })
     if (!result.success) return false
-    await refreshUserProgressSubscriptions(userId)
+    await refreshUserProgressSubscriptions(normalizedUserId)
 
     return true
   } catch (error) {
@@ -731,12 +688,16 @@ export async function setUserXP(userId: string, amount: number): Promise<boolean
 export async function setUserCoins(userId: string, amount: number): Promise<boolean> {
   try {
     if (!(await hasAdminAccess())) return false
+    const normalizedUserId = normalizeUuid(userId)
+    const normalizedAmount = toIntegerOrNull(amount, 0)
+    if (!isUuid(normalizedUserId) || normalizedAmount === null) return false
+
     const result = await callBackendFunction<{ success: boolean }>('setUserCoins', {
-      userId,
-      amount: Math.max(0, Math.floor(amount)),
+      userId: normalizedUserId,
+      amount: normalizedAmount,
     })
     if (!result.success) return false
-    await refreshUserProgressSubscriptions(userId)
+    await refreshUserProgressSubscriptions(normalizedUserId)
 
     return true
   } catch (error) {
@@ -748,12 +709,16 @@ export async function setUserCoins(userId: string, amount: number): Promise<bool
 export async function setUserLevel(userId: string, level: number): Promise<boolean> {
   try {
     if (!(await hasAdminAccess())) return false
+    const normalizedUserId = normalizeUuid(userId)
+    const normalizedLevel = toIntegerOrNull(level, 1)
+    if (!isUuid(normalizedUserId) || normalizedLevel === null) return false
+
     const result = await callBackendFunction<{ success: boolean }>('setUserLevel', {
-      userId,
-      level: Math.max(1, Math.floor(level)),
+      userId: normalizedUserId,
+      level: normalizedLevel,
     })
     if (!result.success) return false
-    await refreshUserProgressSubscriptions(userId)
+    await refreshUserProgressSubscriptions(normalizedUserId)
 
     return true
   } catch (error) {

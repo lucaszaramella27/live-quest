@@ -3,7 +3,7 @@ import { useAuth } from '@/features/auth/context/AuthContext'
 import { GradientCard, Button, IconMapper } from '@/shared/ui'
 import { Lock, Check, Medal } from 'lucide-react'
 import { reportError } from '@/services/logger.service'
-import { getUserProgress, setActiveTitle, type UserProgress } from '@/services/progress.service'
+import { setActiveTitle, subscribeToUserProgress, syncUnlockedTitles, type UserProgress } from '@/services/progress.service'
 import { TITLES, type Title, getRarityGradient } from '@/services/titles.service'
 
 export function TitlesPage() {
@@ -13,28 +13,28 @@ export function TitlesPage() {
   const [unlockedTitles, setUnlockedTitles] = useState<string[]>([])
 
   useEffect(() => {
-    if (user) {
-      void loadProgress()
+    if (!user) {
+      setProgress(null)
+      setUnlockedTitles([])
+      setLoading(false)
+      return
+    }
+
+    setLoading(true)
+    void syncUnlockedTitles(user.id).catch((error) => {
+      reportError('TitlesPage.syncUnlockedTitles', error)
+    })
+
+    const unsubscribe = subscribeToUserProgress(user.id, (updatedProgress) => {
+      setProgress(updatedProgress)
+      setUnlockedTitles(updatedProgress?.unlockedTitles || [])
+      setLoading(false)
+    })
+
+    return () => {
+      unsubscribe()
     }
   }, [user])
-
-  async function loadProgress() {
-    if (!user) return
-
-    try {
-      setLoading(true)
-      const progressData = await getUserProgress(user.id)
-      setProgress(progressData)
-
-      if (progressData) {
-        setUnlockedTitles(progressData.unlockedTitles || [])
-      }
-    } catch (error) {
-      reportError('Erro ao carregar progresso:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   async function handleSetTitle(titleId: string) {
     if (!user || !progress) return
@@ -44,7 +44,12 @@ export function TitlesPage() {
 
     const success = await setActiveTitle(user.id, nextActiveTitle)
     if (success) {
-      setProgress({ ...progress, activeTitle: nextActiveTitle })
+      setProgress((current) => {
+        if (!current) return current
+        return { ...current, activeTitle: nextActiveTitle }
+      })
+    } else {
+      reportError('TitlesPage.handleSetTitle', new Error('Operacao negada pelo backend'))
     }
   }
 

@@ -62,3 +62,18 @@ npm run dev
 - The backend enforces per-user access control on DB reads/writes via `/api/db/query`.
 - Billing actions use `/api/functions/createStripeCheckoutSession` and `/api/functions/createStripePortalSession`.
 
+## Production Quick Start
+
+1. Set production env vars in `backend/.env` (or your secrets manager).
+2. Run backend preflight:
+
+```bash
+npm --prefix backend run preflight
+```
+
+3. Start production stack (Postgres + backend):
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+

@@ -44,23 +44,86 @@ const applyDocumentRewardSchema = z.object({
   sourceId: z.string().uuid(),
 })
 
+const coerceIntegerField = (minValue) =>
+  z.preprocess((value) => {
+    if (typeof value !== 'string') return value
+    const trimmed = value.trim()
+    if (!trimmed) return value
+    const parsed = Number(trimmed)
+    return Number.isFinite(parsed) ? parsed : value
+  }, z.number().int().min(minValue))
+
 const setUserXPSchema = z.object({
-  userId: z.string().uuid(),
-  amount: z.number().int().min(0),
+  userId: z.string().trim().uuid(),
+  amount: coerceIntegerField(0),
 })
 
 const setUserCoinsSchema = z.object({
-  userId: z.string().uuid(),
-  amount: z.number().int().min(0),
+  userId: z.string().trim().uuid(),
+  amount: coerceIntegerField(0),
 })
 
 const setUserLevelSchema = z.object({
-  userId: z.string().uuid(),
-  level: z.number().int().min(1),
+  userId: z.string().trim().uuid(),
+  level: coerceIntegerField(1),
 })
 
 const resetUserProgressSchema = z.object({
   userId: z.string().uuid(),
+})
+
+const addXPSchema = z.object({
+  userId: z.string().uuid(),
+  amount: z.number().int(),
+})
+
+const addCoinsSchema = z.object({
+  userId: z.string().uuid(),
+  amount: z.number().int(),
+})
+
+const spendCoinsSchema = z.object({
+  userId: z.string().uuid(),
+  amount: z.number().int().positive(),
+})
+
+const unlockAchievementSchema = z.object({
+  userId: z.string().uuid(),
+  achievementId: z.string().min(1).max(120),
+})
+
+const unlockTitleSchema = z.object({
+  userId: z.string().uuid(),
+  titleId: z.string().min(1).max(120),
+})
+
+const recordDailyActivitySchema = z.object({
+  userId: z.string().uuid(),
+  type: z.enum(['task', 'goal', 'event']),
+  xpEarned: z.number().int().min(0).optional(),
+  coinsEarned: z.number().int().min(0).optional(),
+})
+
+const addDailyActivityRewardsSchema = z.object({
+  userId: z.string().uuid(),
+  xpEarned: z.number().int().min(0).optional(),
+  coinsEarned: z.number().int().min(0).optional(),
+})
+
+const updateStreakSchema = z.object({
+  userId: z.string().uuid(),
+  currentStreak: z.number().int().min(0),
+  longestStreak: z.number().int().min(0),
+})
+
+const registerStreakActivitySchema = z.object({
+  userId: z.string().uuid(),
+  checkinDate: z.string().datetime().optional(),
+})
+
+const consumeStreakFreezeUsesSchema = z.object({
+  userId: z.string().uuid(),
+  usesToConsume: z.number().int().min(0),
 })
 
 const DEFAULT_EQUIPPED_ITEMS = {
@@ -295,6 +358,28 @@ const ACHIEVEMENT_RULES = [
   },
 ]
 
+const TITLE_RULES = [
+  { id: 'novice', type: 'level', value: 1 },
+  { id: 'streamer', type: 'level', value: 5 },
+  { id: 'pro', type: 'level', value: 10 },
+  { id: 'legend', type: 'level', value: 25 },
+  { id: 'god', type: 'level', value: 50 },
+  { id: 'immortal', type: 'level', value: 100 },
+  { id: 'consistent', type: 'streak', value: 7 },
+  { id: 'marathoner', type: 'streak', value: 30 },
+  { id: 'unstoppable', type: 'streak', value: 100 },
+  { id: 'taskmaster', type: 'tasks', value: 100 },
+  { id: 'workaholic', type: 'tasks', value: 500 },
+  { id: 'productivity_god', type: 'tasks', value: 1000 },
+  { id: 'dreamer', type: 'goals', value: 5 },
+  { id: 'achiever', type: 'goals', value: 20 },
+  { id: 'champion', type: 'goals', value: 50 },
+  { id: 'collector', type: 'achievements', value: 5 },
+  { id: 'completionist', type: 'achievements', value: 11 },
+  { id: 'early_bird', type: 'special', value: 0 },
+  { id: 'night_owl', type: 'special', value: 0 },
+]
+
 let cachedTwitchAppToken = null
 let cachedTwitchAppTokenExpiresAt = 0
 
@@ -303,6 +388,13 @@ function createHttpError(status, message, code) {
   error.status = status
   error.code = code
   return error
+}
+
+function resolveTargetUserId(authUserId, isAdmin, requestedUserId) {
+  if (requestedUserId !== authUserId && !isAdmin) {
+    throw createHttpError(403, 'Forbidden: cannot mutate another user.', 'forbidden')
+  }
+  return requestedUserId
 }
 
 function getFrontendBaseUrl(req) {
@@ -360,6 +452,8 @@ function resolvePremiumExpiresAt(isPremium, durationDays) {
 function getXPForLevel(level) {
   return Math.floor(100 * Math.pow(1.5, level - 1))
 }
+
+const MAX_PROGRESS_INT = 2147483647
 
 function getLevelFromXP(xp) {
   let level = 1
@@ -424,6 +518,19 @@ function toNonNegativeInt(value) {
   const numeric = Number(value)
   if (!Number.isFinite(numeric)) return 0
   return Math.max(0, Math.floor(numeric))
+}
+
+function clampProgressInt(value) {
+  return Math.min(MAX_PROGRESS_INT, toNonNegativeInt(value))
+}
+
+function getSafeTotalXPForLevel(level) {
+  return clampProgressInt(getTotalXPForLevel(level))
+}
+
+function resolveNextLevelFromXP(currentLevel, xp) {
+  const derivedLevel = getLevelFromXP(clampProgressInt(xp))
+  return Math.max(Math.max(1, toNonNegativeInt(currentLevel)), derivedLevel)
 }
 
 function hashString(input) {
@@ -871,6 +978,106 @@ function resolveUnlockedAchievements(existingAchievementIds, stats) {
   }
 }
 
+function normalizeUnlockedTitleIds(existingTitleIds) {
+  const next = new Set(
+    (Array.isArray(existingTitleIds) ? existingTitleIds : [])
+      .map((value) => String(value))
+      .filter(Boolean)
+  )
+  next.add('novice')
+  return next
+}
+
+function resolveUnlockedTitles(existingTitleIds, stats) {
+  const known = normalizeUnlockedTitleIds(existingTitleIds)
+
+  for (const rule of TITLE_RULES) {
+    if (rule.type === 'special') continue
+
+    let unlocked = false
+    if (rule.type === 'level') unlocked = toNonNegativeInt(stats.level) >= rule.value
+    if (rule.type === 'xp') unlocked = toNonNegativeInt(stats.totalXP) >= rule.value
+    if (rule.type === 'achievements') unlocked = toNonNegativeInt(stats.achievementsCount) >= rule.value
+    if (rule.type === 'streak') unlocked = toNonNegativeInt(stats.longestStreak) >= rule.value
+    if (rule.type === 'tasks') unlocked = toNonNegativeInt(stats.totalTasks) >= rule.value
+    if (rule.type === 'goals') unlocked = toNonNegativeInt(stats.totalGoals) >= rule.value
+
+    if (unlocked) known.add(rule.id)
+  }
+
+  return Array.from(known)
+}
+
+async function getTitleProgressStats(client, userId) {
+  const activityQuery = await client.query(
+    `
+      SELECT
+        COALESCE(SUM(tasks_completed), 0) AS total_tasks_completed,
+        COALESCE(SUM(goals_completed), 0) AS total_goals_completed
+      FROM public.daily_activity
+      WHERE user_id = $1
+    `,
+    [userId]
+  )
+
+  const streakQuery = await client.query(
+    `
+      SELECT longest_streak
+      FROM public.streaks
+      WHERE user_id = $1
+      LIMIT 1
+    `,
+    [userId]
+  )
+
+  return {
+    totalTasks: toNonNegativeInt(activityQuery.rows[0]?.total_tasks_completed),
+    totalGoals: toNonNegativeInt(activityQuery.rows[0]?.total_goals_completed),
+    longestStreak: toNonNegativeInt(streakQuery.rows[0]?.longest_streak),
+  }
+}
+
+function areStringArraysEqual(left, right) {
+  if (left.length !== right.length) return false
+  for (let index = 0; index < left.length; index += 1) {
+    if (left[index] !== right[index]) return false
+  }
+  return true
+}
+
+async function syncUnlockedTitlesForUser(client, userId) {
+  const progress = await ensureProgressRowForUser(client, userId)
+  const titleStats = await getTitleProgressStats(client, userId)
+  const nextUnlockedTitles = resolveUnlockedTitles(progress.unlocked_titles, {
+    level: toNonNegativeInt(progress.level),
+    totalXP: toNonNegativeInt(progress.xp),
+    achievementsCount: Array.isArray(progress.achievements) ? progress.achievements.length : 0,
+    longestStreak: titleStats.longestStreak,
+    totalTasks: titleStats.totalTasks,
+    totalGoals: titleStats.totalGoals,
+  })
+
+  const normalizedCurrent = normalizeUnlockedTitleIds(progress.unlocked_titles)
+  const sortedCurrent = Array.from(normalizedCurrent).sort()
+  const sortedNext = [...nextUnlockedTitles].sort()
+  if (areStringArraysEqual(sortedCurrent, sortedNext)) {
+    return sortedCurrent
+  }
+
+  await client.query(
+    `
+      UPDATE public.user_progress
+      SET
+        unlocked_titles = $2,
+        updated_at = $3
+      WHERE user_id = $1
+    `,
+    [userId, sortedNext, new Date().toISOString()]
+  )
+
+  return sortedNext
+}
+
 function getRewardRule(sourceType) {
   if (sourceType === 'task') return TASK_REWARD_RULE
   if (sourceType === 'goal') return GOAL_REWARD_RULE
@@ -1105,6 +1312,8 @@ async function registerStreakActivityForUser(client, userId, checkinDate = new D
     )
   }
 
+  await syncUnlockedTitlesForUser(client, userId)
+
   return {
     streak: {
       userId,
@@ -1274,6 +1483,261 @@ async function ensureDailyActivityRow(client, userId, date) {
   return inserted.rows[0]
 }
 
+async function recordDailyActivityForUser(client, userId, type, xpEarned = 0, coinsEarned = 0) {
+  const today = getTodayIsoDate()
+  const current = await ensureDailyActivityRow(client, userId, today)
+  const nowIso = new Date().toISOString()
+  const nextTasks = toNonNegativeInt(current.tasks_completed) + (type === 'task' ? 1 : 0)
+  const nextGoals = toNonNegativeInt(current.goals_completed) + (type === 'goal' ? 1 : 0)
+  const nextEvents = toNonNegativeInt(current.events_created) + (type === 'event' ? 1 : 0)
+  const nextXP = clampProgressInt(toNonNegativeInt(current.xp_earned) + toNonNegativeInt(xpEarned))
+  const nextCoins = clampProgressInt(toNonNegativeInt(current.coins_earned) + toNonNegativeInt(coinsEarned))
+
+  await client.query(
+    `
+      UPDATE public.daily_activity
+      SET
+        tasks_completed = $2,
+        goals_completed = $3,
+        events_created = $4,
+        xp_earned = $5,
+        coins_earned = $6,
+        updated_at = $7
+      WHERE id = $1
+    `,
+    [current.id, nextTasks, nextGoals, nextEvents, nextXP, nextCoins, nowIso]
+  )
+
+  if (type === 'task' || type === 'goal') {
+    await syncUnlockedTitlesForUser(client, userId)
+  }
+}
+
+async function addDailyActivityRewardsForUser(client, userId, xpEarned = 0, coinsEarned = 0) {
+  const xp = toNonNegativeInt(xpEarned)
+  const coins = toNonNegativeInt(coinsEarned)
+  if (xp === 0 && coins === 0) return
+
+  const today = getTodayIsoDate()
+  const current = await ensureDailyActivityRow(client, userId, today)
+  const nowIso = new Date().toISOString()
+
+  await client.query(
+    `
+      UPDATE public.daily_activity
+      SET
+        xp_earned = $2,
+        coins_earned = $3,
+        updated_at = $4
+      WHERE id = $1
+    `,
+    [
+      current.id,
+      clampProgressInt(toNonNegativeInt(current.xp_earned) + xp),
+      clampProgressInt(toNonNegativeInt(current.coins_earned) + coins),
+      nowIso,
+    ]
+  )
+}
+
+async function updateStreakForUser(client, userId, currentStreak, longestStreak) {
+  const streakRow = await ensureStreakRowForUser(client, userId)
+  const nextCurrentStreak = Math.max(0, toNonNegativeInt(currentStreak))
+  const nextLongestStreak = Math.max(nextCurrentStreak, toNonNegativeInt(longestStreak))
+  const nextCheckinIso = new Date().toISOString()
+
+  await client.query(
+    `
+      UPDATE public.streaks
+      SET
+        current_streak = $2,
+        longest_streak = $3,
+        last_checkin = $4
+      WHERE user_id = $1
+    `,
+    [userId, nextCurrentStreak, nextLongestStreak, nextCheckinIso]
+  )
+
+  await syncUnlockedTitlesForUser(client, userId)
+
+  return {
+    userId: String(streakRow.user_id || userId),
+    currentStreak: nextCurrentStreak,
+    longestStreak: nextLongestStreak,
+    lastCheckin: new Date(nextCheckinIso),
+  }
+}
+
+async function consumeStreakFreezeUsesForUser(client, userId, usesToConsume) {
+  const inventoryRow = await ensureInventoryRowForUser(client, userId)
+  const activePowerups = parseInventoryPowerups(inventoryRow)
+  const consumption = consumeStreakFreezeUses(activePowerups, usesToConsume)
+
+  if (consumption.success && consumption.consumedUses > 0) {
+    await client.query(
+      `
+        UPDATE public.user_inventories
+        SET active_powerups = $2::jsonb, updated_at = $3
+        WHERE user_id = $1
+      `,
+      [userId, JSON.stringify(consumption.nextPowerups), new Date().toISOString()]
+    )
+  }
+
+  return {
+    success: consumption.success,
+    consumedUses: consumption.consumedUses,
+    remainingUses: consumption.remainingUses,
+  }
+}
+
+async function addXPForUser(client, userId, amount) {
+  const progress = await ensureProgressRowForUser(client, userId)
+  const nowIso = new Date().toISOString()
+  const delta = Number(amount)
+  const currentXP = clampProgressInt(progress.xp)
+  const currentLevel = Math.max(1, toNonNegativeInt(progress.level))
+  const nextXP = clampProgressInt(currentXP + delta)
+  const nextLevel = resolveNextLevelFromXP(currentLevel, nextXP)
+  const nextWeeklyXP = clampProgressInt(toNonNegativeInt(progress.weekly_xp) + delta)
+  const nextMonthlyXP = clampProgressInt(toNonNegativeInt(progress.monthly_xp) + delta)
+
+  await client.query(
+    `
+      UPDATE public.user_progress
+      SET
+        xp = $2,
+        level = $3,
+        weekly_xp = $4,
+        monthly_xp = $5,
+        updated_at = $6
+      WHERE user_id = $1
+    `,
+    [userId, nextXP, nextLevel, nextWeeklyXP, nextMonthlyXP, nowIso]
+  )
+
+  await syncUnlockedTitlesForUser(client, userId)
+
+  return {
+    newXP: nextXP,
+    newLevel: nextLevel,
+    leveledUp: nextLevel > currentLevel,
+  }
+}
+
+async function addCoinsForUser(client, userId, amount) {
+  const progress = await ensureProgressRowForUser(client, userId)
+  const nowIso = new Date().toISOString()
+  const delta = Number(amount)
+  const nextCoins = clampProgressInt(toNonNegativeInt(progress.coins) + delta)
+
+  await client.query(
+    `
+      UPDATE public.user_progress
+      SET
+        coins = $2,
+        updated_at = $3
+      WHERE user_id = $1
+    `,
+    [userId, nextCoins, nowIso]
+  )
+
+  return { newBalance: nextCoins }
+}
+
+async function spendCoinsForUser(client, userId, amount) {
+  const progress = await ensureProgressRowForUser(client, userId)
+  const currentCoins = toNonNegativeInt(progress.coins)
+  const spendAmount = toNonNegativeInt(amount)
+  if (spendAmount <= 0) {
+    return { success: false, newBalance: currentCoins }
+  }
+
+  if (currentCoins < spendAmount) {
+    return { success: false, newBalance: currentCoins }
+  }
+
+  const nextBalance = currentCoins - spendAmount
+  await client.query(
+    `
+      UPDATE public.user_progress
+      SET
+        coins = $2,
+        updated_at = $3
+      WHERE user_id = $1
+    `,
+    [userId, nextBalance, new Date().toISOString()]
+  )
+
+  return { success: true, newBalance: nextBalance }
+}
+
+async function unlockAchievementForUser(client, userId, achievementId) {
+  const progress = await ensureProgressRowForUser(client, userId)
+  const currentAchievements = Array.isArray(progress.achievements) ? progress.achievements : []
+  if (currentAchievements.includes(achievementId)) {
+    return { success: false, alreadyUnlocked: true }
+  }
+
+  await client.query(
+    `
+      UPDATE public.user_progress
+      SET
+        achievements = $2,
+        updated_at = $3
+      WHERE user_id = $1
+    `,
+    [userId, [...currentAchievements, achievementId], new Date().toISOString()]
+  )
+
+  await syncUnlockedTitlesForUser(client, userId)
+
+  return { success: true, alreadyUnlocked: false }
+}
+
+async function unlockTitleForUser(client, userId, titleId) {
+  const progress = await ensureProgressRowForUser(client, userId)
+  const unlockedTitles = Array.isArray(progress.unlocked_titles) ? progress.unlocked_titles : []
+  if (unlockedTitles.includes(titleId)) {
+    return { success: false, alreadyUnlocked: true }
+  }
+
+  await client.query(
+    `
+      UPDATE public.user_progress
+      SET
+        unlocked_titles = $2,
+        updated_at = $3
+      WHERE user_id = $1
+    `,
+    [userId, [...unlockedTitles, titleId], new Date().toISOString()]
+  )
+
+  return { success: true, alreadyUnlocked: false }
+}
+
+async function resetWeeklyXPForAllUsers(client) {
+  const result = await client.query(
+    `
+      UPDATE public.user_progress
+      SET weekly_xp = 0
+      WHERE weekly_xp <> 0
+    `
+  )
+  return toNonNegativeInt(result.rowCount)
+}
+
+async function resetMonthlyXPForAllUsers(client) {
+  const result = await client.query(
+    `
+      UPDATE public.user_progress
+      SET monthly_xp = 0
+      WHERE monthly_xp <> 0
+    `
+  )
+  return toNonNegativeInt(result.rowCount)
+}
+
 async function applyDocumentRewardForUser(client, userId, sourceType, sourceId) {
   const sourceRow = await getRewardSourceRowForUpdate(client, userId, sourceType, sourceId)
   if (!sourceRow) {
@@ -1370,8 +1834,8 @@ async function applyDocumentRewardForUser(client, userId, sourceType, sourceId) 
       sourceType === 'task' ? toNonNegativeInt(activityRow.tasks_completed) + 1 : toNonNegativeInt(activityRow.tasks_completed),
       sourceType === 'goal' ? toNonNegativeInt(activityRow.goals_completed) + 1 : toNonNegativeInt(activityRow.goals_completed),
       sourceType === 'event' ? toNonNegativeInt(activityRow.events_created) + 1 : toNonNegativeInt(activityRow.events_created),
-      toNonNegativeInt(activityRow.xp_earned) + awardedXP,
-      toNonNegativeInt(activityRow.coins_earned) + awardedCoins,
+      clampProgressInt(toNonNegativeInt(activityRow.xp_earned) + awardedXP),
+      clampProgressInt(toNonNegativeInt(activityRow.coins_earned) + awardedCoins),
       nowIso,
     ]
   )
@@ -1381,11 +1845,11 @@ async function applyDocumentRewardForUser(client, userId, sourceType, sourceId) 
   const stats = await getAchievementStats(client, userId)
   const achievementResolution = resolveUnlockedAchievements(progress.achievements, stats)
   const totalXPGain = awardedXP + toNonNegativeInt(achievementResolution.bonusXP)
-  const nextXP = toNonNegativeInt(progress.xp) + totalXPGain
-  const nextCoins = toNonNegativeInt(progress.coins) + awardedCoins
-  const nextLevel = getLevelFromXP(nextXP)
-  const nextWeeklyXP = toNonNegativeInt(progress.weekly_xp) + totalXPGain
-  const nextMonthlyXP = toNonNegativeInt(progress.monthly_xp) + totalXPGain
+  const nextXP = clampProgressInt(toNonNegativeInt(progress.xp) + totalXPGain)
+  const nextCoins = clampProgressInt(toNonNegativeInt(progress.coins) + awardedCoins)
+  const nextLevel = resolveNextLevelFromXP(progress.level, nextXP)
+  const nextWeeklyXP = clampProgressInt(toNonNegativeInt(progress.weekly_xp) + totalXPGain)
+  const nextMonthlyXP = clampProgressInt(toNonNegativeInt(progress.monthly_xp) + totalXPGain)
 
   await client.query(
     `
@@ -1411,6 +1875,8 @@ async function applyDocumentRewardForUser(client, userId, sourceType, sourceId) 
       nowIso,
     ]
   )
+
+  await syncUnlockedTitlesForUser(client, userId)
 
   return {
     awarded: true,
@@ -1697,7 +2163,7 @@ router.post('/:functionName', async (req, res) => {
 
       await withTransaction(async (client) => {
         const progress = await ensureProgressRowForUser(client, parsed.data.userId)
-        const nextXP = toNonNegativeInt(parsed.data.amount)
+        const nextXP = clampProgressInt(parsed.data.amount)
         const nextLevel = getLevelFromXP(nextXP)
 
         await client.query(
@@ -1708,6 +2174,8 @@ router.post('/:functionName', async (req, res) => {
           `,
           [parsed.data.userId, nextXP, nextLevel, new Date().toISOString()]
         )
+
+        await syncUnlockedTitlesForUser(client, parsed.data.userId)
 
         return progress
       })
@@ -1729,7 +2197,7 @@ router.post('/:functionName', async (req, res) => {
             SET coins = $2, updated_at = $3
             WHERE user_id = $1
           `,
-          [parsed.data.userId, toNonNegativeInt(parsed.data.amount), new Date().toISOString()]
+          [parsed.data.userId, clampProgressInt(parsed.data.amount), new Date().toISOString()]
         )
       })
 
@@ -1745,14 +2213,17 @@ router.post('/:functionName', async (req, res) => {
       await withTransaction(async (client) => {
         await ensureProgressRowForUser(client, parsed.data.userId)
         const safeLevel = Math.max(1, toNonNegativeInt(parsed.data.level))
+        const safeXP = getSafeTotalXPForLevel(safeLevel)
         await client.query(
           `
             UPDATE public.user_progress
             SET level = $2, xp = $3, updated_at = $4
             WHERE user_id = $1
           `,
-          [parsed.data.userId, safeLevel, getTotalXPForLevel(safeLevel), new Date().toISOString()]
+          [parsed.data.userId, safeLevel, safeXP, new Date().toISOString()]
         )
+
+        await syncUnlockedTitlesForUser(client, parsed.data.userId)
       })
 
       res.json({ success: true })
@@ -1789,11 +2260,182 @@ router.post('/:functionName', async (req, res) => {
       return
     }
 
+    if (functionName === 'addXP') {
+      const parsed = addXPSchema.safeParse(req.body)
+      if (!parsed.success) throw createHttpError(400, 'Invalid XP adjustment payload.', 'validation_failed')
+      const targetUserId = resolveTargetUserId(authUserId, Boolean(req.auth?.isAdmin), parsed.data.userId)
+
+      const result = await withTransaction((client) =>
+        addXPForUser(client, targetUserId, parsed.data.amount)
+      )
+
+      res.json(result)
+      return
+    }
+
+    if (functionName === 'addCoins') {
+      const parsed = addCoinsSchema.safeParse(req.body)
+      if (!parsed.success) throw createHttpError(400, 'Invalid coins adjustment payload.', 'validation_failed')
+      const targetUserId = resolveTargetUserId(authUserId, Boolean(req.auth?.isAdmin), parsed.data.userId)
+
+      const result = await withTransaction((client) =>
+        addCoinsForUser(client, targetUserId, parsed.data.amount)
+      )
+
+      res.json(result)
+      return
+    }
+
+    if (functionName === 'spendCoins') {
+      const parsed = spendCoinsSchema.safeParse(req.body)
+      if (!parsed.success) throw createHttpError(400, 'Invalid coins spend payload.', 'validation_failed')
+      const targetUserId = resolveTargetUserId(authUserId, Boolean(req.auth?.isAdmin), parsed.data.userId)
+
+      const result = await withTransaction((client) =>
+        spendCoinsForUser(client, targetUserId, parsed.data.amount)
+      )
+
+      res.json(result)
+      return
+    }
+
+    if (functionName === 'unlockAchievement') {
+      const parsed = unlockAchievementSchema.safeParse(req.body)
+      if (!parsed.success) throw createHttpError(400, 'Invalid achievement payload.', 'validation_failed')
+      const targetUserId = resolveTargetUserId(authUserId, Boolean(req.auth?.isAdmin), parsed.data.userId)
+
+      const result = await withTransaction((client) =>
+        unlockAchievementForUser(client, targetUserId, parsed.data.achievementId)
+      )
+
+      res.json(result)
+      return
+    }
+
+    if (functionName === 'unlockTitle') {
+      const parsed = unlockTitleSchema.safeParse(req.body)
+      if (!parsed.success) throw createHttpError(400, 'Invalid title payload.', 'validation_failed')
+      const targetUserId = resolveTargetUserId(authUserId, Boolean(req.auth?.isAdmin), parsed.data.userId)
+
+      const result = await withTransaction((client) =>
+        unlockTitleForUser(client, targetUserId, parsed.data.titleId)
+      )
+
+      res.json(result)
+      return
+    }
+
+    if (functionName === 'resetWeeklyXP') {
+      if (!req.auth?.isAdmin) throw createHttpError(403, 'Forbidden: admin access required.', 'forbidden')
+
+      const affectedRows = await withTransaction((client) => resetWeeklyXPForAllUsers(client))
+      res.json({ success: true, affectedRows })
+      return
+    }
+
+    if (functionName === 'resetMonthlyXP') {
+      if (!req.auth?.isAdmin) throw createHttpError(403, 'Forbidden: admin access required.', 'forbidden')
+
+      const affectedRows = await withTransaction((client) => resetMonthlyXPForAllUsers(client))
+      res.json({ success: true, affectedRows })
+      return
+    }
+
+    if (functionName === 'recordDailyActivity') {
+      const parsed = recordDailyActivitySchema.safeParse(req.body)
+      if (!parsed.success) throw createHttpError(400, 'Invalid daily activity payload.', 'validation_failed')
+      const targetUserId = resolveTargetUserId(authUserId, Boolean(req.auth?.isAdmin), parsed.data.userId)
+
+      await withTransaction((client) =>
+        recordDailyActivityForUser(
+          client,
+          targetUserId,
+          parsed.data.type,
+          parsed.data.xpEarned ?? 0,
+          parsed.data.coinsEarned ?? 0
+        )
+      )
+
+      res.json({ success: true })
+      return
+    }
+
+    if (functionName === 'addDailyActivityRewards') {
+      const parsed = addDailyActivityRewardsSchema.safeParse(req.body)
+      if (!parsed.success) throw createHttpError(400, 'Invalid daily rewards payload.', 'validation_failed')
+      const targetUserId = resolveTargetUserId(authUserId, Boolean(req.auth?.isAdmin), parsed.data.userId)
+
+      await withTransaction((client) =>
+        addDailyActivityRewardsForUser(
+          client,
+          targetUserId,
+          parsed.data.xpEarned ?? 0,
+          parsed.data.coinsEarned ?? 0
+        )
+      )
+
+      res.json({ success: true })
+      return
+    }
+
+    if (functionName === 'updateStreak') {
+      const parsed = updateStreakSchema.safeParse(req.body)
+      if (!parsed.success) throw createHttpError(400, 'Invalid streak update payload.', 'validation_failed')
+      const targetUserId = resolveTargetUserId(authUserId, Boolean(req.auth?.isAdmin), parsed.data.userId)
+
+      const streak = await withTransaction((client) =>
+        updateStreakForUser(client, targetUserId, parsed.data.currentStreak, parsed.data.longestStreak)
+      )
+
+      res.json({ success: true, streak })
+      return
+    }
+
+    if (functionName === 'registerStreakActivity') {
+      const parsed = registerStreakActivitySchema.safeParse(req.body)
+      if (!parsed.success) throw createHttpError(400, 'Invalid streak activity payload.', 'validation_failed')
+      const targetUserId = resolveTargetUserId(authUserId, Boolean(req.auth?.isAdmin), parsed.data.userId)
+      const checkinDate = parsed.data.checkinDate ? new Date(parsed.data.checkinDate) : new Date()
+      if (Number.isNaN(checkinDate.getTime())) {
+        throw createHttpError(400, 'Invalid streak checkin date.', 'validation_failed')
+      }
+
+      const result = await withTransaction((client) =>
+        registerStreakActivityForUser(client, targetUserId, checkinDate)
+      )
+
+      res.json(result)
+      return
+    }
+
+    if (functionName === 'consumeStreakFreezeUses') {
+      const parsed = consumeStreakFreezeUsesSchema.safeParse(req.body)
+      if (!parsed.success) throw createHttpError(400, 'Invalid streak freeze payload.', 'validation_failed')
+      const targetUserId = resolveTargetUserId(authUserId, Boolean(req.auth?.isAdmin), parsed.data.userId)
+
+      const result = await withTransaction((client) =>
+        consumeStreakFreezeUsesForUser(client, targetUserId, parsed.data.usesToConsume)
+      )
+
+      res.json(result)
+      return
+    }
+
     if (functionName === 'ensureUserProgress') {
       await withTransaction(async (client) => {
         await ensureProgressRowForUser(client, authUserId)
       })
       res.json({ success: true })
+      return
+    }
+
+    if (functionName === 'syncUnlockedTitles') {
+      const result = await withTransaction(async (client) => {
+        const unlockedTitles = await syncUnlockedTitlesForUser(client, authUserId)
+        return { success: true, unlockedTitles }
+      })
+
+      res.json(result)
       return
     }
 
@@ -1939,12 +2581,12 @@ router.post('/:functionName', async (req, res) => {
           }
         }
 
-        let nextXP = Number(progress.xp ?? 0)
-        let nextLevel = Number(progress.level ?? 1)
+        let nextXP = clampProgressInt(progress.xp)
+        let nextLevel = Math.max(1, toNonNegativeInt(progress.level))
         if (item.effect) {
           if (item.effect.type === 'instant_level') {
             nextLevel += Math.max(1, Number(item.effect.value || 1))
-            nextXP = Math.max(nextXP, getTotalXPForLevel(nextLevel))
+            nextXP = clampProgressInt(Math.max(nextXP, getSafeTotalXPForLevel(nextLevel)))
           } else {
             const activatedAt = new Date().toISOString()
             const expiresAt =
@@ -1961,7 +2603,7 @@ router.post('/:functionName', async (req, res) => {
           }
         }
 
-        const nextCoins = currentCoins - Number(item.price)
+        const nextCoins = clampProgressInt(currentCoins - Number(item.price))
         purchasedSet.add(item.id)
         const nowIso = new Date().toISOString()
 
@@ -1982,6 +2624,8 @@ router.post('/:functionName', async (req, res) => {
           `,
           [authUserId, Array.from(purchasedSet), JSON.stringify(activePowerups), nowIso]
         )
+
+        await syncUnlockedTitlesForUser(client, authUserId)
 
         return {
           success: true,
@@ -2155,10 +2799,10 @@ router.post('/:functionName', async (req, res) => {
               xpAwarded = cappedHours * Math.max(1, Number(integration.xp_per_hour_live || 50))
 
               const progress = await ensureProgressRowForUser(client, authUserId)
-              const nextXP = Math.max(0, Number(progress.xp ?? 0) + xpAwarded)
-              const nextLevel = getLevelFromXP(nextXP)
-              const nextWeeklyXP = Math.max(0, Number(progress.weekly_xp ?? 0) + xpAwarded)
-              const nextMonthlyXP = Math.max(0, Number(progress.monthly_xp ?? 0) + xpAwarded)
+              const nextXP = clampProgressInt(Number(progress.xp ?? 0) + xpAwarded)
+              const nextLevel = resolveNextLevelFromXP(progress.level, nextXP)
+              const nextWeeklyXP = clampProgressInt(Number(progress.weekly_xp ?? 0) + xpAwarded)
+              const nextMonthlyXP = clampProgressInt(Number(progress.monthly_xp ?? 0) + xpAwarded)
 
               await client.query(
                 `
@@ -2168,6 +2812,8 @@ router.post('/:functionName', async (req, res) => {
                 `,
                 [authUserId, nextXP, nextLevel, nextWeeklyXP, nextMonthlyXP]
               )
+
+              await syncUnlockedTitlesForUser(client, authUserId)
             }
           }
         }
@@ -2272,11 +2918,11 @@ router.post('/:functionName', async (req, res) => {
         const achievementResolution = resolveUnlockedAchievements(progress.achievements, stats)
 
         const totalXPGain = challengeXP + toNonNegativeInt(achievementResolution.bonusXP)
-        const nextXP = toNonNegativeInt(progress.xp) + totalXPGain
-        const nextCoins = toNonNegativeInt(progress.coins) + challengeCoins
-        const nextLevel = getLevelFromXP(nextXP)
-        const nextWeeklyXP = toNonNegativeInt(progress.weekly_xp) + totalXPGain
-        const nextMonthlyXP = toNonNegativeInt(progress.monthly_xp) + totalXPGain
+        const nextXP = clampProgressInt(toNonNegativeInt(progress.xp) + totalXPGain)
+        const nextCoins = clampProgressInt(toNonNegativeInt(progress.coins) + challengeCoins)
+        const nextLevel = resolveNextLevelFromXP(progress.level, nextXP)
+        const nextWeeklyXP = clampProgressInt(toNonNegativeInt(progress.weekly_xp) + totalXPGain)
+        const nextMonthlyXP = clampProgressInt(toNonNegativeInt(progress.monthly_xp) + totalXPGain)
 
         await client.query(
           `
@@ -2334,6 +2980,8 @@ router.post('/:functionName', async (req, res) => {
           `,
           [ledgerId, authUserId, `${weeklyChallenges.weekKey}:${challenge.id}`, challengeXP, challengeCoins, nowIso]
         )
+
+        await syncUnlockedTitlesForUser(client, authUserId)
 
         return {
           success: true,

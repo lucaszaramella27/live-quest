@@ -25,6 +25,22 @@ import {
 } from '@/services/progress.service'
 import { reportError } from '@/services/logger.service'
 
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}
+
+function parseNonNegativeInteger(value: string): number | null {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 0) return null
+  return parsed
+}
+
+function parsePositiveInteger(value: string): number | null {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed < 1) return null
+  return parsed
+}
+
 export function AdminPage() {
   const { user } = useAuth()
   const [userId, setUserId] = useState('')
@@ -48,14 +64,19 @@ export function AdminPage() {
   }
 
   async function handleSearchUser() {
-    if (!userId.trim()) {
+    const targetUserId = userId.trim()
+    if (!targetUserId) {
       setToast({ show: true, message: 'Digite um User ID valido.', type: 'error' })
+      return
+    }
+    if (!isUuid(targetUserId)) {
+      setToast({ show: true, message: 'User ID invalido. Use um UUID.', type: 'error' })
       return
     }
 
     setLoading(true)
     try {
-      const progress = await fetchUserData(userId.trim())
+      const progress = await fetchUserData(targetUserId)
 
       if (!progress) {
         setUserInfo(null)
@@ -74,12 +95,14 @@ export function AdminPage() {
   }
 
   async function refreshUserInfo() {
-    if (!userId.trim()) return
+    const targetUserId = userInfo?.userId || userId.trim()
+    if (!targetUserId || !isUuid(targetUserId)) return
 
     setLoading(true)
     try {
-      const progress = await fetchUserData(userId.trim())
+      const progress = await fetchUserData(targetUserId)
       setUserInfo(progress)
+      setUserId(targetUserId)
       setToast({ show: true, message: 'Dados atualizados.', type: 'success' })
     } catch (error) {
       reportError('admin_page_refresh_user', error)
@@ -89,12 +112,23 @@ export function AdminPage() {
     }
   }
 
-  async function runWithRefresh(action: () => Promise<void>, successMessage: string, errorMessage: string) {
+  async function runWithRefresh(
+    action: () => Promise<void>,
+    successMessage: string,
+    errorMessage: string,
+    targetUserId: string
+  ) {
+    if (!targetUserId || !isUuid(targetUserId)) {
+      setToast({ show: true, message: 'User ID invalido. Recarregue o usuario antes de alterar.', type: 'error' })
+      return
+    }
+
     setLoading(true)
     try {
       await action()
-      const updatedProgress = await fetchUserData(userId.trim())
+      const updatedProgress = await fetchUserData(targetUserId)
       setUserInfo(updatedProgress)
+      setUserId(targetUserId)
       setToast({ show: true, message: successMessage, type: 'success' })
     } catch (error) {
       reportError('admin_page_action', error)
@@ -105,70 +139,101 @@ export function AdminPage() {
   }
 
   async function handleActivatePremium() {
-    if (!userId.trim()) return
+    const targetUserId = userInfo?.userId || userId.trim()
+    if (!targetUserId) return
+
     await runWithRefresh(
       async () => {
-        const success = await activatePremium(userId.trim(), 'lifetime')
+        const success = await activatePremium(targetUserId, 'lifetime')
         if (!success) throw new Error('activate_premium_failed')
       },
       'Premium ativado com sucesso.',
-      'Erro ao ativar premium.'
+      'Erro ao ativar premium.',
+      targetUserId
     )
   }
 
   async function handleDeactivatePremium() {
-    if (!userId.trim()) return
+    const targetUserId = userInfo?.userId || userId.trim()
+    if (!targetUserId) return
+
     await runWithRefresh(
       async () => {
-        const success = await deactivatePremium(userId.trim())
+        const success = await deactivatePremium(targetUserId)
         if (!success) throw new Error('deactivate_premium_failed')
       },
       'Premium removido com sucesso.',
-      'Erro ao remover premium.'
+      'Erro ao remover premium.',
+      targetUserId
     )
   }
 
   async function handleSetXP() {
-    if (!userId.trim() || !xpAmount) return
+    const targetUserId = userInfo?.userId || userId.trim()
+    if (!targetUserId || !xpAmount) return
+    const parsedAmount = parseNonNegativeInteger(xpAmount)
+    if (parsedAmount === null) {
+      setToast({ show: true, message: 'XP invalido. Use um inteiro maior ou igual a 0.', type: 'error' })
+      return
+    }
+
     await runWithRefresh(
       async () => {
-        const success = await setUserXP(userId.trim(), parseInt(xpAmount, 10))
+        const success = await setUserXP(targetUserId, parsedAmount)
         if (!success) throw new Error('set_user_xp_failed')
         setXpAmount('')
       },
       `XP definido para ${xpAmount}.`,
-      'Erro ao definir XP.'
+      'Erro ao definir XP.',
+      targetUserId
     )
   }
 
   async function handleSetCoins() {
-    if (!userId.trim() || !coinsAmount) return
+    const targetUserId = userInfo?.userId || userId.trim()
+    if (!targetUserId || !coinsAmount) return
+    const parsedAmount = parseNonNegativeInteger(coinsAmount)
+    if (parsedAmount === null) {
+      setToast({ show: true, message: 'Moedas invalidas. Use um inteiro maior ou igual a 0.', type: 'error' })
+      return
+    }
+
     await runWithRefresh(
       async () => {
-        const success = await setUserCoins(userId.trim(), parseInt(coinsAmount, 10))
+        const success = await setUserCoins(targetUserId, parsedAmount)
         if (!success) throw new Error('set_user_coins_failed')
         setCoinsAmount('')
       },
       `Moedas definidas para ${coinsAmount}.`,
-      'Erro ao definir moedas.'
+      'Erro ao definir moedas.',
+      targetUserId
     )
   }
 
   async function handleSetLevel() {
-    if (!userId.trim() || !levelAmount) return
+    const targetUserId = userInfo?.userId || userId.trim()
+    if (!targetUserId || !levelAmount) return
+    const parsedLevel = parsePositiveInteger(levelAmount)
+    if (parsedLevel === null) {
+      setToast({ show: true, message: 'Nivel invalido. Use um inteiro maior ou igual a 1.', type: 'error' })
+      return
+    }
+
     await runWithRefresh(
       async () => {
-        const success = await setUserLevel(userId.trim(), parseInt(levelAmount, 10))
+        const success = await setUserLevel(targetUserId, parsedLevel)
         if (!success) throw new Error('set_user_level_failed')
         setLevelAmount('')
       },
       `Nivel definido para ${levelAmount}.`,
-      'Erro ao definir nivel.'
+      'Erro ao definir nivel.',
+      targetUserId
     )
   }
 
   async function handleResetProgress() {
-    if (!userId.trim()) return
+    const targetUserId = userInfo?.userId || userId.trim()
+    if (!targetUserId) return
 
     const confirmed = window.confirm(
       `ATENCAO\n\nTem certeza que deseja resetar todo o progresso de ${userInfo?.userName || 'este usuario'}?\n\nIsso vai zerar XP, nivel, moedas, conquistas e titulos.\nO status Premium sera mantido.\n\nEsta acao nao pode ser desfeita.`
@@ -177,11 +242,12 @@ export function AdminPage() {
 
     await runWithRefresh(
       async () => {
-        const success = await resetUserProgress(userId.trim())
+        const success = await resetUserProgress(targetUserId)
         if (!success) throw new Error('reset_user_progress_failed')
       },
       'Progresso resetado com sucesso.',
-      'Erro ao resetar progresso.'
+      'Erro ao resetar progresso.',
+      targetUserId
     )
   }
 

@@ -1,4 +1,5 @@
 import { backendClient } from './backend-client'
+import { callBackendFunction } from './functions-api.service'
 import { reportError } from './logger.service'
 import { toDateOrNow } from './date-utils.service'
 
@@ -27,10 +28,6 @@ interface DailyActivityRow {
   updated_at: string | null
 }
 
-function getTodayIsoDate(): string {
-  return new Date().toISOString().split('T')[0]
-}
-
 function mapDailyActivityRow(row: DailyActivityRow): DailyActivity {
   return {
     userId: row.user_id,
@@ -45,18 +42,6 @@ function mapDailyActivityRow(row: DailyActivityRow): DailyActivity {
   }
 }
 
-async function getTodayActivity(userId: string, date: string): Promise<DailyActivityRow | null> {
-  const id = `${userId}_${date}`
-  const { data, error } = await backendClient
-    .from('daily_activity')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle<DailyActivityRow>()
-
-  if (error) throw error
-  return data
-}
-
 /**
  * Registra ou atualiza a atividade do dia
  */
@@ -66,51 +51,13 @@ export async function recordDailyActivity(
   xpEarned: number = 0,
   coinsEarned: number = 0
 ): Promise<void> {
-  const today = getTodayIsoDate()
-  const id = `${userId}_${today}`
-  const nowIso = new Date().toISOString()
-
   try {
-    const current = await getTodayActivity(userId, today)
-
-    if (!current) {
-      const row: Record<string, unknown> = {
-        id,
-        user_id: userId,
-        date: today,
-        tasks_completed: type === 'task' ? 1 : 0,
-        goals_completed: type === 'goal' ? 1 : 0,
-        events_created: type === 'event' ? 1 : 0,
-        xp_earned: xpEarned,
-        coins_earned: coinsEarned,
-        created_at: nowIso,
-        updated_at: nowIso,
-      }
-
-      const { error } = await backendClient.from('daily_activity').insert(row)
-      if (error) throw error
-      return
-    }
-
-    const updates: Record<string, unknown> = {
-      updated_at: nowIso,
-      xp_earned: Number(current.xp_earned ?? 0) + xpEarned,
-      coins_earned: Number(current.coins_earned ?? 0) + coinsEarned,
-      tasks_completed: Number(current.tasks_completed ?? 0),
-      goals_completed: Number(current.goals_completed ?? 0),
-      events_created: Number(current.events_created ?? 0),
-    }
-
-    if (type === 'task') {
-      updates.tasks_completed = Number(current.tasks_completed ?? 0) + 1
-    } else if (type === 'goal') {
-      updates.goals_completed = Number(current.goals_completed ?? 0) + 1
-    } else {
-      updates.events_created = Number(current.events_created ?? 0) + 1
-    }
-
-    const { error } = await backendClient.from('daily_activity').update(updates).eq('id', id)
-    if (error) throw error
+    await callBackendFunction<{ success: boolean }>('recordDailyActivity', {
+      userId,
+      type,
+      xpEarned: Math.max(0, Math.floor(xpEarned)),
+      coinsEarned: Math.max(0, Math.floor(coinsEarned)),
+    })
   } catch (error) {
     reportError('Erro ao registrar atividade:', error)
   }
@@ -121,40 +68,12 @@ export async function addDailyActivityRewards(
   xpEarned: number = 0,
   coinsEarned: number = 0
 ): Promise<void> {
-  const today = getTodayIsoDate()
-  const id = `${userId}_${today}`
-  const nowIso = new Date().toISOString()
-
   try {
-    const current = await getTodayActivity(userId, today)
-
-    if (!current) {
-      const { error } = await backendClient.from('daily_activity').insert({
-        id,
-        user_id: userId,
-        date: today,
-        tasks_completed: 0,
-        goals_completed: 0,
-        events_created: 0,
-        xp_earned: xpEarned,
-        coins_earned: coinsEarned,
-        created_at: nowIso,
-        updated_at: nowIso,
-      })
-      if (error) throw error
-      return
-    }
-
-    const { error } = await backendClient
-      .from('daily_activity')
-      .update({
-        xp_earned: Number(current.xp_earned ?? 0) + xpEarned,
-        coins_earned: Number(current.coins_earned ?? 0) + coinsEarned,
-        updated_at: nowIso,
-      })
-      .eq('id', id)
-
-    if (error) throw error
+    await callBackendFunction<{ success: boolean }>('addDailyActivityRewards', {
+      userId,
+      xpEarned: Math.max(0, Math.floor(xpEarned)),
+      coinsEarned: Math.max(0, Math.floor(coinsEarned)),
+    })
   } catch (error) {
     reportError('Erro ao atualizar recompensas diarias:', error)
   }

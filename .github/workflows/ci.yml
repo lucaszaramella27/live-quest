@@ -30,4 +30,5 @@ jobs:
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm --prefix backend ci
+      - run: npm --prefix backend run test
       - run: find backend/src -name '*.js' -print0 | xargs -0 -n1 node --check

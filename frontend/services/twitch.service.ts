@@ -1,4 +1,3 @@
-import type { RealtimeChannel } from './backend-client'
 import { backendClient } from './backend-client'
 import { callBackendFunction } from './functions-api.service'
 import { reportError } from './logger.service'
@@ -174,52 +173,47 @@ export function subscribeToTwitchIntegration(
   userId: string,
   callback: (integration: TwitchIntegration | null) => void
 ): () => void {
-  const channelName = `twitch_integration:${userId}:${Math.random().toString(36).slice(2)}`
-  const channel: RealtimeChannel = backendClient
-    .channel(channelName)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'twitch_integrations',
-        filter: `user_id=eq.${userId}`,
-      },
-      (payload) => {
-        if (payload.eventType === 'DELETE') {
-          callback(null)
-          return
-        }
+  const refresh = async () => {
+    try {
+      const { data, error } = await backendClient
+        .from('twitch_integrations')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle<TwitchIntegrationRow>()
 
-        const row = payload.new as TwitchIntegrationRow | undefined
-        if (!row) {
-          callback(null)
-          return
-        }
+      if (error) throw error
+      callback(data ? mapIntegrationRow(data) : null)
+    } catch (error) {
+      reportError('Erro ao observar integracao Twitch:', error)
+      callback(null)
+    }
+  }
 
-        callback(mapIntegrationRow(row))
-      }
-    )
-    .subscribe(async (status) => {
-      if (status !== 'SUBSCRIBED') return
+  void refresh()
 
-      try {
-        const { data, error } = await backendClient
-          .from('twitch_integrations')
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle<TwitchIntegrationRow>()
+  const intervalId = typeof window !== 'undefined'
+    ? window.setInterval(() => {
+      void refresh()
+    }, 30000)
+    : null
 
-        if (error) throw error
-        callback(data ? mapIntegrationRow(data) : null)
-      } catch (error) {
-        reportError('Erro ao observar integracao Twitch:', error)
-        callback(null)
-      }
-    })
+  const visibilityHandler = () => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      void refresh()
+    }
+  }
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', visibilityHandler)
+  }
 
   return () => {
-    void backendClient.removeChannel(channel)
+    if (intervalId !== null && typeof window !== 'undefined') {
+      window.clearInterval(intervalId)
+    }
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', visibilityHandler)
+    }
   }
 }
 

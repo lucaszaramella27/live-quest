@@ -8,6 +8,7 @@ import { authRouter } from './routes/auth.js'
 import { functionsRouter } from './routes/functions.js'
 import { queryRouter } from './routes/query.js'
 import { requireAuth } from './auth.js'
+import { startScheduler } from './scheduler.js'
 
 const app = express()
 const port = Number(process.env.PORT || 3001)
@@ -114,7 +115,52 @@ app.use((error, _req, res, _next) => {
   })
 })
 
-app.listen(port, () => {
+const schedulerLogger = {
+  info(payload) {
+    // eslint-disable-next-line no-console
+    console.log(payload)
+  },
+  warn(payload) {
+    // eslint-disable-next-line no-console
+    console.warn(payload)
+  },
+  error(payload) {
+    // eslint-disable-next-line no-console
+    console.error(payload)
+  },
+}
+
+let schedulerController = null
+let isShuttingDown = false
+
+const httpServer = app.listen(port, () => {
   // eslint-disable-next-line no-console
   console.log(`[backend] listening on http://localhost:${port}`)
+  schedulerController = startScheduler(schedulerLogger)
 })
+
+function shutdown(signal) {
+  if (isShuttingDown) return
+  isShuttingDown = true
+
+  // eslint-disable-next-line no-console
+  console.log(JSON.stringify({ level: 'info', signal, message: 'Shutting down backend server.' }))
+
+  try {
+    schedulerController?.stop()
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error(JSON.stringify({ level: 'error', message: error?.message || 'Failed to stop scheduler.' }))
+  }
+
+  httpServer.close(() => {
+    process.exit(0)
+  })
+
+  setTimeout(() => {
+    process.exit(1)
+  }, 10000).unref()
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))

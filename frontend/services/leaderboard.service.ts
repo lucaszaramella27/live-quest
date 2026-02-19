@@ -1,4 +1,3 @@
-import type { RealtimeChannel } from './backend-client'
 import { backendClient } from './backend-client'
 import { reportError } from './logger.service'
 
@@ -93,33 +92,37 @@ export function subscribeToLeaderboard(
   callback: (leaderboard: LeaderboardUser[]) => void,
   limitCount: number = 100
 ): () => void {
-  const channelName = `leaderboard:${period}:${Math.random().toString(36).slice(2)}`
-  const channel: RealtimeChannel = backendClient
-    .channel(channelName)
-    .on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'user_progress' },
-      () => {
-        void getLeaderboard(period, limitCount)
-          .then((nextLeaderboard) => callback(nextLeaderboard))
-          .catch((error) => {
-            reportError('Erro no listener do leaderboard:', error)
-            callback([])
-          })
-      }
-    )
-    .subscribe((status) => {
-      if (status === 'SUBSCRIBED') {
-        void getLeaderboard(period, limitCount)
-          .then((nextLeaderboard) => callback(nextLeaderboard))
-          .catch((error) => {
-            reportError('Erro no listener do leaderboard:', error)
-            callback([])
-          })
-      }
-    })
+  const refresh = () => {
+    void getLeaderboard(period, limitCount)
+      .then((nextLeaderboard) => callback(nextLeaderboard))
+      .catch((error) => {
+        reportError('Erro no listener do leaderboard:', error)
+        callback([])
+      })
+  }
+
+  refresh()
+
+  const intervalId = typeof window !== 'undefined'
+    ? window.setInterval(refresh, 20000)
+    : null
+
+  const visibilityHandler = () => {
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      refresh()
+    }
+  }
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', visibilityHandler)
+  }
 
   return () => {
-    void backendClient.removeChannel(channel)
+    if (intervalId !== null && typeof window !== 'undefined') {
+      window.clearInterval(intervalId)
+    }
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', visibilityHandler)
+    }
   }
 }

@@ -190,20 +190,6 @@ function toPositiveInteger(value: number): number {
   return Math.max(0, Math.floor(value))
 }
 
-function getStreakFreezeUses(activePowerups: ActivePowerup[]): number {
-  return activePowerups.reduce((total, powerup) => {
-    if (powerup.type !== 'streak_freeze') return total
-    return total + toPositiveInteger(powerup.value)
-  }, 0)
-}
-
-function getPowerupExpirationTimestamp(powerup: ActivePowerup): number {
-  if (!powerup.expiresAt) return Number.POSITIVE_INFINITY
-
-  const timestamp = new Date(powerup.expiresAt).getTime()
-  return Number.isNaN(timestamp) ? Number.POSITIVE_INFINITY : timestamp
-}
-
 async function getCurrentUserId(): Promise<string> {
   const {
     data: { user },
@@ -312,87 +298,17 @@ export async function consumeStreakFreezeUses(
   userId: string,
   usesToConsume: number
 ): Promise<StreakFreezeConsumptionResult> {
-  const requiredUses = toPositiveInteger(usesToConsume)
-  const inventoryRow = await getInventoryRow(userId)
-  const purchasedItemIds = Array.isArray(inventoryRow?.purchased_item_ids) ? inventoryRow.purchased_item_ids : []
-  const activePowerups = (inventoryRow?.active_powerups || [])
-    .map((entry) => mapActivePowerup(entry))
-    .filter((entry): entry is ActivePowerup => Boolean(entry))
-
-  const availableUses = getStreakFreezeUses(activePowerups)
-  if (requiredUses <= 0) {
-    return {
-      success: true,
-      consumedUses: 0,
-      remainingUses: availableUses,
-    }
-  }
-
-  if (availableUses < requiredUses) {
-    return {
-      success: false,
-      consumedUses: 0,
-      remainingUses: availableUses,
-    }
-  }
-
-  let remainingToConsume = requiredUses
-  const nextPowerups: ActivePowerup[] = []
-  const sortedPowerups = [...activePowerups].sort(
-    (left, right) => getPowerupExpirationTimestamp(left) - getPowerupExpirationTimestamp(right)
-  )
-
-  for (const powerup of sortedPowerups) {
-    if (powerup.type !== 'streak_freeze') {
-      nextPowerups.push(powerup)
-      continue
-    }
-
-    const currentUses = toPositiveInteger(powerup.value)
-    if (remainingToConsume <= 0) {
-      nextPowerups.push(powerup)
-      continue
-    }
-
-    const consumedNow = Math.min(currentUses, remainingToConsume)
-    const remainingUses = currentUses - consumedNow
-    remainingToConsume -= consumedNow
-
-    if (remainingUses > 0) {
-      nextPowerups.push({
-        ...powerup,
-        value: remainingUses,
-      })
-    }
-  }
-
-  const nowIso = new Date().toISOString()
-  const { error: updateError } = await backendClient.from('user_inventories').upsert(
-    {
-      user_id: userId,
-      purchased_item_ids: purchasedItemIds,
-      active_powerups: nextPowerups,
-      updated_at: nowIso,
-      created_at: inventoryRow?.created_at || nowIso,
-    },
-    { onConflict: 'user_id' }
-  )
-
-  if (updateError) {
-    throw updateError
-  }
-
-  const equippedItems = normalizeEquippedItems(userId, new Set(purchasedItemIds))
-  notifyInventorySubscribers(userId, {
-    purchasedItemIds,
-    activePowerups: nextPowerups,
-    equippedItems,
+  const result = await callBackendFunction<StreakFreezeConsumptionResult>('consumeStreakFreezeUses', {
+    userId,
+    usesToConsume: toPositiveInteger(usesToConsume),
   })
 
+  const inventory = await normalizeInventory(userId)
+  notifyInventorySubscribers(userId, inventory)
   return {
-    success: true,
-    consumedUses: requiredUses,
-    remainingUses: getStreakFreezeUses(nextPowerups),
+    success: result.success === true,
+    consumedUses: toPositiveInteger(result.consumedUses),
+    remainingUses: toPositiveInteger(result.remainingUses),
   }
 }
 
